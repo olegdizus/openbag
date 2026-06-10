@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { D1Client } from "@wallabag/core/db";
+import { D1Client } from "@wallabag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 
 export function tagRoutes() {
   const app = new Hono();
 
-  app.get("/tags", async (c) => {
+  app.get("/", async (c) => {
     const user = c.get("user");
     const tags = await db(c.env).all(
       "SELECT * FROM tags WHERE user_id = ?",
@@ -15,7 +15,7 @@ export function tagRoutes() {
     return c.json({ items: tags });
   });
 
-  app.delete("/tags", async (c) => {
+  app.delete("/", async (c) => {
     const user = c.get("user");
     const tagId = parseInt(c.req.query("tagId") || "0");
     await db(c.env).run("DELETE FROM tags WHERE id = ? AND user_id = ?", [tagId, user.id]);

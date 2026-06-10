@@ -1,4 +1,4 @@
-import { D1Client } from "@wallabag/core/db";
+import { D1Client } from "@wallabag/core";
 
 function randomToken(len = 64) {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

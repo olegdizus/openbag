@@ -1,17 +1,22 @@
 {
   "name": "wallabag",
-  "main": "dist/worker.js",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-06-10",
-  "assets": { "directory": "./packages/web/dist" },
+  "alias": {
+    "@wallabag/core": "./packages/core/src/index.ts",
+    "@wallabag/auth": "./packages/auth/src/index.ts",
+    "@wallabag/parser": "./packages/parser/src/index.ts",
+    "@wallabag/api": "./packages/api/src/index.ts",
+    "@wallabag/web": "./packages/web/src/index.ts"
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "wallabag-db",
-      "database_id": "REPLACE_WITH_ACTUAL_ID"
+      "database_id": "8f1e2235-6599-4243-8c83-d5fe5994c8fd"
     }
   ],
   "queues": {
-    "producers": ["ENTRY_REFETCH", "TOKEN_CLEANUP", "IMPORT"],
     "consumers": [
       { "queue": "entry-refetch", "max_batch_size": 10, "max_retries": 3 },
       { "queue": "token-cleanup", "max_batch_size": 50 },
@@ -19,6 +24,9 @@
     ]
   },
   "browser": { "binding": "BROWSER" },
+  "assets": {
+    "directory": "./packages/web/public"
+  },
   "triggers": {
     "crons": ["0 * * * *", "0 3 * * *", "0 0 * * 0"]
   }
