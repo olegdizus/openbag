@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { D1Client } from "@wallabag/core/db";
+import { D1Client } from "@wallabag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 
 export function annotationRoutes() {
   const app = new Hono();
 
-  app.get("/annotations/:entryId", async (c) => {
+  app.get("/:entryId", async (c) => {
     const user = c.get("user");
     const entryId = parseInt(c.req.param("entryId"));
     const annotations = await db(c.env).all(
@@ -16,7 +16,7 @@ export function annotationRoutes() {
     return c.json({ items: annotations });
   });
 
-  app.post("/annotations/:entryId", async (c) => {
+  app.post("/:entryId", async (c) => {
     const user = c.get("user");
     const entryId = parseInt(c.req.param("entryId"));
     const body = await c.req.json();
@@ -28,7 +28,7 @@ export function annotationRoutes() {
     return c.json({ id }, 201);
   });
 
-  app.put("/annotations/:annotationId", async (c) => {
+  app.put("/:annotationId", async (c) => {
     const user = c.get("user");
     const annotationId = c.req.param("annotationId");
     const body = await c.req.json();
@@ -39,7 +39,7 @@ export function annotationRoutes() {
     return c.json({ success: true });
   });
 
-  app.delete("/annotations/:annotationId", async (c) => {
+  app.delete("/:annotationId", async (c) => {
     const user = c.get("user");
     const annotationId = c.req.param("annotationId");
     await db(c.env).run("DELETE FROM annotations WHERE id = ? AND user_id = ?", [annotationId, user.id]);

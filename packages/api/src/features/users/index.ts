@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getUserInfo } from "@wallabag/auth/features/users";
+import { getUserInfo } from "@wallabag/auth";
 
 export function userRoutes() {
   const app = new Hono();

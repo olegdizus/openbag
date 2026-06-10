@@ -12,7 +12,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "dist-ttsc",
+    "outDir": "dist",
     "rootDir": ".",
     "paths": {
       "@wallabag/core": ["packages/core/src"],
@@ -23,14 +23,11 @@
     }
   },
   "include": [
+    "src/**/*.ts",
     "packages/*/src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "dist-ttsc"
-  ],
-  "ttsc": {
-    "plugin": { "transform": "typia/lib/transform" }
-  }
+    "dist"
+  ]
 }

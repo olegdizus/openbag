@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { D1Client } from "@wallabag/core/db";
+import { D1Client } from "@wallabag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 
 export function searchRoutes() {
   const app = new Hono();
 
-  app.get("/search", async (c) => {
+  app.get("/", async (c) => {
     const user = c.get("user");
     const term = c.req.query("term") || "";
     const page = parseInt(c.req.query("page") || "1");

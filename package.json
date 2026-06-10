@@ -10,20 +10,18 @@
     "packages/web"
   ],
   "scripts": {
-    "build": "ttsc && wrangler deploy --dry-run",
-    "dev": "ttsc --watch & wrangler dev",
-    "deploy": "ttsc && wrangler deploy",
-    "deploy:dev": "ttsc && wrangler deploy --env dev",
+    "build": "tsc --project tsconfig.build.json && wrangler deploy --dry-run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dev": "wrangler deploy --env dev",
     "test": "vitest",
     "test:e2e": "playwright test",
     "db:migrate": "wrangler d1 migrations apply DB",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "typecheck": "ttsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
-    "ttypescript": "^1.5.15",
-    "typia": "^4.2.0",
     "wrangler": "^4.0.0",
     "vitest": "^3.0.0",
     "@cloudflare/vitest-pool-workers": "^0.8.0",
