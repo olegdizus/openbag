@@ -266,14 +266,36 @@ function escapeXml(s: string): string {
  */
 function cleanContentForEpub(html: string): string {
   let clean = html;
-  // Remove script, style, noscript
+
+  // Remove script/style/noscript blocks
   clean = clean.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
   clean = clean.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
   clean = clean.replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, "");
-  // Remove event handlers
+
+  // Remove event handlers (on*)
   clean = clean.replace(/\s+on\w+="[^"]*"/gi, "");
-  // Remove data-* attributes
-  clean = clean.replace(/\s+data-[a-z-]+="[^"]*"/gi, "");
+
+  // Remove data-* attributes — both quoted and boolean (valueless) forms
+  clean = clean.replace(/\s+data-[a-z][-a-z0-9]*(?:="[^"]*")?/gi, "");
+
+  // Remove other common XHTML-incompatible attributes
+  clean = clean.replace(/\s+aria-[a-z-]+(?:="[^"]*")?/gi, "");
+  clean = clean.replace(/\s+role="[^"]*"/gi, "");
+  clean = clean.replace(/\s+tabindex="[^"]*"/gi, "");
+  clean = clean.replace(/\s+loading="[^"]*"/gi, "");
+  clean = clean.replace(/\s+decoding="[^"]*"/gi, "");
+  clean = clean.replace(/\s+fetchpriority="[^"]*"/gi, "");
+  clean = clean.replace(/\s+crossorigin(?:="[^"]*")?/gi, "");
+  clean = clean.replace(/\s+integrity="[^"]*"/gi, "");
+
+  // Fix void elements for XHTML compatibility
+  clean = clean.replace(/<br>/gi, "<br/>");
+  clean = clean.replace(/<hr>/gi, "<hr/>");
+  clean = clean.replace(/<img([^>]*)(?<!\/)>/gi, "<img$1/>");
+
+  // Remove inline SVGs (often contain invalid XHTML)
+  clean = clean.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, "");
+
   return clean;
 }
 
