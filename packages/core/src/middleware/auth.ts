@@ -15,15 +15,21 @@ export interface Variables {
 
 export function authMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
+    // Support both Authorization: Bearer header and ?access_token= query param
     const authHeader = c.req.header("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const queryToken = c.req.query("access_token");
+    let token: string;
+
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.slice(7).trim();
+    } else if (queryToken) {
+      token = queryToken;
+    } else {
       return c.json(
         { error: { code: 401, message: "Unauthorized" } },
         401
       );
     }
-
-    const token = authHeader.slice(7).trim();
     const db = new D1Client(c.env.DB);
     const tokenRow = await db.one<{ user_id: number }>(
       "SELECT user_id FROM oauth_access_tokens WHERE token = ? AND expires_at > datetime('now')",

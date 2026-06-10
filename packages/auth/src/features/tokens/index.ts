@@ -1,9 +1,13 @@
 import { D1Client } from "@wallabag/core";
 
-function randomToken(len = 64) {
+function randomToken(len = 64): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let out = "";
-  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  const bytes = new Uint8Array(len);
+  crypto.getRandomValues(bytes);
+  for (let i = 0; i < len; i++) {
+    out += chars[bytes[i] % chars.length];
+  }
   return out;
 }
 
@@ -35,4 +39,14 @@ export async function findAccessToken(env: any, token: string) {
     "SELECT * FROM oauth_access_tokens WHERE token = ? AND expires_at > datetime('now')",
     [token]
   );
+}
+
+export async function revokeAccessToken(env: any, token: string) {
+  const db = new D1Client(env.DB);
+  await db.run("DELETE FROM oauth_access_tokens WHERE token = ?", [token]);
+}
+
+export async function revokeRefreshToken(env: any, token: string) {
+  const db = new D1Client(env.DB);
+  await db.run("DELETE FROM oauth_refresh_tokens WHERE token = ?", [token]);
 }

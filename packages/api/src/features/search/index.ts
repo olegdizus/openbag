@@ -11,22 +11,39 @@ export function searchRoutes() {
     const term = c.req.query("term") || "";
     const page = parseInt(c.req.query("page") || "1");
     const perPage = parseInt(c.req.query("perPage") || "30");
+    const offset = (page - 1) * perPage;
+
     if (!term) {
-      return c.json({ items: [], total: 0, page, pages: 0 });
+      return c.json({ _embedded: { items: [] }, _links: { self: { href: "/api/search" } }, total: 0, page, pages: 0 });
     }
+
     const likeTerm = `%${term}%`;
+    const userId = user.id;
+
     const rows = await db(c.env).all<any[]>(
-      `SELECT e.*, t.label as tag_label
+      `SELECT e.*, snippet(entries_fts_trigram, 0, '<mark>', '</mark>', '...', 20) as snippet
        FROM entries e
-       LEFT JOIN entry_tags et ON e.id = et.entry_id
-       LEFT JOIN tags t ON et.tag_id = t.id
-       WHERE e.user_id = ? AND (e.title LIKE ? OR e.content LIKE ? OR e.url LIKE ?)
-       GROUP BY e.id
-       ORDER BY e.created_at DESC
+       JOIN entries_fts_trigram fts ON fts.rowid = e.id
+       WHERE e.user_id = ? AND (fts.title MATCH ? OR fts.content MATCH ? OR fts.url MATCH ?)
+       ORDER BY bm25(entries_fts_trigram)
        LIMIT ? OFFSET ?`,
-      [user.id, likeTerm, likeTerm, likeTerm, perPage, (page - 1) * perPage]
+      [userId, term, term, term, perPage, offset]
     );
-    return c.json({ items: rows, total: rows.length, page, pages: 1 });
+
+    const totalRow = await db(c.env).one<{ total: number }>(
+      `SELECT COUNT(*) as total FROM entries_fts_trigram fts
+       JOIN entries e ON e.id = fts.rowid
+       WHERE e.user_id = ? AND (fts.title MATCH ? OR fts.content MATCH ? OR fts.url MATCH ?)`,
+      [userId, term, term, term]
+    );
+
+    return c.json({
+      _embedded: { items: rows },
+      _links: { self: { href: `/api/search?term=${encodeURIComponent(term)}&page=${page}&perPage=${perPage}` } },
+      total: totalRow.total,
+      page,
+      pages: Math.ceil(totalRow.total / perPage) || 1,
+    });
   });
 
   return app;
