@@ -25,10 +25,88 @@ export interface EntryForEpub {
   preview_picture: string | null;
 }
 
+const IMAGE_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  svg: "image/svg+xml",
+  webp: "image/webp",
+  avif: "image/avif",
+};
+
+function mimeFromUrl(url: string): string {
+  try {
+    const pathname = new URL(url, "https://example.com").pathname;
+    const ext = pathname.split(".").pop()?.toLowerCase() || "";
+    if (IMAGE_MIME[ext]) return IMAGE_MIME[ext];
+    // Check for format hints in query params (e.g. ?format=png)
+    const fmt = new URL(url, "https://example.com").searchParams.get("format");
+    if (fmt && IMAGE_MIME[fmt]) return IMAGE_MIME[fmt];
+  } catch {}
+  return "image/jpeg"; // default
+}
+
+/**
+ * Fetch images from HTML content and replace URLs with data URIs for offline reading.
+ */
+async function inlineImages(html: string, fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): Promise<string> {
+  const imgRegex = /<img\s[^>]*src="([^"]+)"[^>]*>/gi;
+  const matches = [...html.matchAll(imgRegex)];
+  if (matches.length === 0) return html;
+
+  // Deduplicate URLs
+  const urlSet = [...new Set(matches.map((m) => m[1]))];
+  const urlToDataUri = new Map<string, string>();
+
+  // Fetch all images in parallel (max 5 concurrent)
+  const results = await Promise.allSettled(
+    urlSet.map(async (url) => {
+      try {
+        // Skip data URIs and SVG inline
+        if (url.startsWith("data:")) return;
+        // Only fetch http(s)
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return;
+
+        const doFetch = fetchFn || globalThis.fetch;
+        const resp = await doFetch(url, {
+          headers: { "User-Agent": "wallabag-cf-worker/1.0" },
+          redirect: "follow",
+        } as RequestInit);
+        if (!resp.ok) return;
+
+        const mime = resp.headers.get("content-type") || mimeFromUrl(url);
+        if (!mime.startsWith("image/")) return;
+
+        const buf = await resp.arrayBuffer();
+        // Cap at 2MB per image
+        if (buf.byteLength > 2 * 1024 * 1024) return;
+
+        const base64 = btoa(
+          new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), "")
+        );
+        urlToDataUri.set(url, `data:${mime};base64,${base64}`);
+      } catch {
+        // Silently skip failed images
+      }
+    })
+  );
+
+  // Replace URLs in HTML
+  let result = html;
+  for (const [url, dataUri] of urlToDataUri) {
+    // Escape special regex chars in URL
+    const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(`src="${escaped}"`, "g"), `src="${dataUri}"`);
+  }
+  return result;
+}
+
 /**
  * Generate an EPUB file as an ArrayBuffer from an entry.
+ * Now async to fetch and inline images for offline reading.
  */
-export function generateEpub(entry: EntryForEpub): ArrayBuffer {
+export async function generateEpub(entry: EntryForEpub, fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): Promise<ArrayBuffer> {
   const files: { path: string; data: Uint8Array; compressed: boolean }[] = [];
   const uid = `urn:uuid:${crypto.randomUUID()}`;
   const title = entry.title || entry.url || "Untitled";
@@ -78,7 +156,9 @@ td, th { border: 1px solid #ccc; padding: 0.3em 0.5em; }
   });
 
   // OEBPS/chapter1.xhtml — the article content
-  const htmlContent = cleanContentForEpub(entry.content || "");
+  // Fetch and inline images for offline reading
+  const contentWithImages = await inlineImages(entry.content || "", fetchFn);
+  const htmlContent = cleanContentForEpub(contentWithImages);
   files.push({
     path: "OEBPS/chapter1.xhtml",
     data: new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>

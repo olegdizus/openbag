@@ -548,7 +548,7 @@ export function entryRoutes() {
     if (!entry) {
       return c.json({ error: { code: 404, message: "Entry not found" } }, 404);
     }
-    const epub = generateEpub(entry as any);
+    const epub = await generateEpub(entry as any);
     return new Response(epub, {
       headers: {
         "Content-Type": "application/epub+zip",
