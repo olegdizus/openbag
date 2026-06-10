@@ -1,0 +1,7 @@
+export async function enqueueEntryRefetch(queue: any, entryId: number, userId: number) {
+  await queue.send({ type: "ENTRY_REFETCH", payload: { entryId, userId } });
+}
+
+export async function enqueueImport(queue: any, userId: number, entries: unknown[]) {
+  await queue.send({ type: "IMPORT", payload: { userId, entries } });
+}

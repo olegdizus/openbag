@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist-ttsc",
+    "rootDir": ".",
+    "paths": {
+      "@wallabag/core": ["packages/core/src"],
+      "@wallabag/auth": ["packages/auth/src"],
+      "@wallabag/parser": ["packages/parser/src"],
+      "@wallabag/api": ["packages/api/src"],
+      "@wallabag/web": ["packages/web/src"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-ttsc"
+  ],
+  "ttsc": {
+    "plugin": { "transform": "typia/lib/transform" }
+  }
+}

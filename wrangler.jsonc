@@ -1,0 +1,25 @@
+{
+  "name": "wallabag",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-06-10",
+  "assets": { "directory": "./packages/web/dist" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wallabag-db",
+      "database_id": "REPLACE_WITH_ACTUAL_ID"
+    }
+  ],
+  "queues": {
+    "producers": ["ENTRY_REFETCH", "TOKEN_CLEANUP", "IMPORT"],
+    "consumers": [
+      { "queue": "entry-refetch", "max_batch_size": 10, "max_retries": 3 },
+      { "queue": "token-cleanup", "max_batch_size": 50 },
+      { "queue": "import", "max_batch_size": 5, "max_retries": 5 }
+    ]
+  },
+  "browser": { "binding": "BROWSER" },
+  "triggers": {
+    "crons": ["0 * * * *", "0 3 * * *", "0 0 * * 0"]
+  }
+}
