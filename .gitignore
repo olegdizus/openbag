@@ -16,3 +16,4 @@ dist-ttsc/
 coverage/
 test-results/
 playwright-report/
+.dist/
