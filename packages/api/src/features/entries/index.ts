@@ -524,8 +524,15 @@ export function entryRoutes() {
         const md = `# ${entry.title}\n\n${entry.content?.replace(/<[^>]*>/g, "") || ""}`;
         return c.text(md, 200, { "Content-Type": "text/markdown" });
       }
-      case "epub":
-        return c.json({ error: { code: 501, message: "EPUB export not yet supported" } }, 501);
+      case "epub": {
+        const epub = await generateEpub(entry as any);
+        return new Response(epub, {
+          headers: {
+            "Content-Type": "application/epub+zip",
+            "Content-Disposition": `attachment; filename="entry-${id}.epub"`,
+          },
+        });
+      }
       case "mobi":
         return c.json({ error: { code: 501, message: "MOBI export not yet supported" } }, 501);
       case "pdf":
@@ -548,7 +555,15 @@ export function entryRoutes() {
     if (!entry) {
       return c.json({ error: { code: 404, message: "Entry not found" } }, 404);
     }
-    const epub = await generateEpub(entry as any);
+    let epub: ArrayBuffer;
+    try {
+      epub = await generateEpub(entry as any);
+    } catch (err) {
+      console.error("EPUB generation failed:", err);
+      epub = await generateEpub(entry as any, () =>
+        Promise.resolve(new Response(null, { status: 404 }))
+      );
+    }
     return new Response(epub, {
       headers: {
         "Content-Type": "application/epub+zip",
