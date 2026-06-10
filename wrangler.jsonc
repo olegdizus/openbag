@@ -24,10 +24,22 @@
     ]
   },
   "browser": { "binding": "BROWSER" },
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
   "assets": {
     "directory": "./packages/web/public"
-  },
-  "triggers": {
-    "crons": ["0 * * * *", "0 3 * * *", "0 0 * * 0"]
   }
 }

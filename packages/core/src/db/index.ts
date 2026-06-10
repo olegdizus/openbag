@@ -11,8 +11,8 @@ export class D1Client {
     const r = await this.db.prepare(sql).bind(...params).first<T>();
     return r ?? null;
   }
-  async run(sql: string, params: any[] = []): Promise<{ changes: number }> {
+  async run(sql: string, params: any[] = []): Promise<{ changes: number; lastRowId: number }> {
     const r = await this.db.prepare(sql).bind(...params).run();
-    return { changes: r.meta.changes };
+    return { changes: r.meta.changes, lastRowId: r.meta.last_row_id };
   }
 }

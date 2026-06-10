@@ -1,13 +1,28 @@
 import { Hono } from "hono";
-import { app } from "@wallabag/api";
+import { app as apiApp } from "@wallabag/api";
+import { webRoutes } from "@wallabag/web";
+import { createDispatcher } from "../packages/core/src/queue/consumers";
+import { handleEntryRefetch } from "../packages/core/src/queue/entry-refetch";
 
-const honoApp = app as Hono & {
-  scheduled?: (event: ScheduledEvent, env: unknown, ctx: ExecutionContext) => Promise<void>;
-  queue?: (batch: MessageBatch<unknown>, env: unknown, ctx: ExecutionContext) => Promise<void>;
-};
+const root = new Hono();
+
+root.route("/", apiApp);
+root.route("/", webRoutes());
+
+// Queue handler — dispatches by message body.type
+const dispatcher = createDispatcher({
+  ENTRY_REFETCH: handleEntryRefetch,
+});
 
 export default {
-  fetch: honoApp.fetch,
-  scheduled: honoApp.scheduled,
-  queue: honoApp.queue,
+  fetch: async (request: Request, env: any, ctx: any) => {
+    const url = new URL(request.url);
+    // Strip .json suffix before routing — Wallabag uses Symfony's .{_format} pattern
+    if (url.pathname.endsWith(".json")) {
+      url.pathname = url.pathname.replace(/\.json$/, "");
+      request = new Request(url.toString(), request);
+    }
+    return root.fetch(request, env, ctx);
+  },
+  queue: dispatcher,
 };

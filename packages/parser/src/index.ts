@@ -1,6 +1,3 @@
-// @wallabag/parser — article fetching & content extraction
-export * from "./features/fetcher";
-export * from "./features/html-rewriter";
-export * from "./features/readability";
-export * from "./features/browser-fallback";
-export * from "./features/metadata";
+export { fetchAndParse, parseHtml, type ParsedContent } from "./features/fetcher";
+export { extractMetadata } from "./features/metadata";
+export { generateEpub, type EntryForEpub } from "./features/epub";
