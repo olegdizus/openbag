@@ -2,13 +2,6 @@
   "name": "wallabag-cf-worker",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "packages/core",
-    "packages/auth",
-    "packages/parser",
-    "packages/api",
-    "packages/web"
-  ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json && wrangler deploy --dry-run",
     "dev": "wrangler dev",

@@ -1,0 +1,10 @@
+packages:
+  - 'packages/core'
+  - 'packages/auth'
+  - 'packages/parser'
+  - 'packages/api'
+  - 'packages/web'
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
