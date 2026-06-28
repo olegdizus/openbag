@@ -8,6 +8,8 @@ export interface LayoutOptions {
   hideNav?: boolean;
   /** Add the `narrow` class to <body> for auth-style centered pages. */
   narrow?: boolean;
+  /** Extra deferred script srcs to include after app.js (e.g. page-specific). */
+  scripts?: string[];
 }
 
 function escapeHtml(s: unknown): string {
@@ -41,6 +43,9 @@ function siteHeader(user: LayoutUser): string {
 export function layout(opts: LayoutOptions): string {
   const bodyClass = opts.narrow ? "narrow" : "";
   const header = opts.hideNav ? "" : siteHeader(opts.user ?? null);
+  const extraScripts = (opts.scripts ?? [])
+    .map((src) => `    <script src="${escapeHtml(src)}" defer></script>`)
+    .join("\n");
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -55,6 +60,7 @@ ${header}
 ${opts.body}
     </main>
     <script src="/app.js" defer></script>
+${extraScripts}
   </body>
 </html>`;
 }

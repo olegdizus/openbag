@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { D1Client } from "@wallabag/core";
 import { layout, escapeHtml } from "../../templates/layout";
+import { sanitizeEntryHtml, computeReadingTime } from "../../sanitize";
 
 const db = (env: any) => new D1Client(env.DB);
 
@@ -9,6 +10,7 @@ type Entry = {
   title: string;
   url: string;
   content: string | null;
+  content_raw: string | null;
   created_at: string;
   is_archived: number;
   is_starred: number;
@@ -71,6 +73,11 @@ function renderActions(e: Entry): string {
 
 export function entryWebRoutes() {
   const app = new Hono();
+
+  function renderContentDiv(content: string, hasRaw: boolean): string {
+    return `<div id="entry-content" data-has-raw="${hasRaw ? "1" : "0"}">${content}</div>`;
+  }
+
 
   app.get("/", async (c) => {
     const user = c.get("user") as { id: number; username: string };
@@ -174,10 +181,17 @@ ${rows}
     const starred = !!entry.is_starred;
     const titleSaved = c.req.query("title_saved") === "1";
     const titleAlert = titleSaved ? `          <div class="alert alert-success" role="status">Title updated.</div>\n` : "";
+    const contentSaved = c.req.query("content_saved") === "1";
+    const contentAlert = contentSaved ? `          <div class="alert alert-success" role="status">Content updated.</div>\n` : "";
+    const hasRaw = entry.content_raw != null;
+    const fallback = "<p>No content yet. Content will be fetched when the parser pipeline is installed.</p>";
+    const contentHtml = entry.content || fallback;
+    const canEdit = !!entry.content;
 
     return c.html(layout({
       title: entry.title || `Entry ${id}`,
       user,
+      scripts: canEdit ? ["/editor.js"] : undefined,
       body: `      <article class="entry">
         <header>
           <h1>${escapeHtml(entry.title)}
@@ -194,11 +208,12 @@ ${rows}
             ${archived ? " · Archived" : ""}${starred ? " · Starred" : ""}
           </p>
         </header>
-${titleAlert}        ${renderActions(entry)}
+${titleAlert}${contentAlert}        ${renderActions(entry)}
         <div class="entry-tags">
           ${tags.map(t => `<span class="tag">${escapeHtml(t.label)}</span>`).join("")}
         </div>
-        <div>${entry.content || "<p>No content yet. Content will be fetched when the parser pipeline is installed.</p>"}</div>
+        ${canEdit ? `        <div class="entry-edit-bar"><button type="button" id="entry-edit-btn" class="btn-edit" aria-label="Edit article content">✎ Edit content</button></div>\n` : ""}
+        ${renderContentDiv(contentHtml, hasRaw)}
       </article>`,
     }));
   });
@@ -253,6 +268,62 @@ ${titleAlert}        ${renderActions(entry)}
     );
     const qs = c.req.query("title_saved") === "1" ? "?title_saved=1" : "";
     return c.redirect(`${nextUrl(c, `/entries/${id}`)}${qs}`, 302);
+  });
+
+  app.post("/:id/content", async (c) => {
+    const user = c.get("user") as { id: number; username: string };
+    const id = parseInt(c.req.param("id"));
+    const body = await c.req.parseBody();
+    const incoming = typeof body.content === "string" ? body.content : "";
+    const entry = await db(c.env).one<Entry>(
+      "SELECT id, content, content_raw FROM entries WHERE id = ? AND user_id = ?",
+      [id, user.id],
+    ).catch(() => null);
+    if (!entry) return c.text("Not found", 404);
+
+    const clean = sanitizeEntryHtml(incoming);
+    const readingTime = computeReadingTime(clean);
+    const firstEdit = entry.content_raw == null && !!entry.content;
+    if (firstEdit) {
+      await db(c.env).run(
+        "UPDATE entries SET content = ?, content_raw = ?, reading_time = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+        [clean, entry.content, readingTime, id, user.id],
+      );
+    } else {
+      await db(c.env).run(
+        "UPDATE entries SET content = ?, reading_time = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+        [clean, readingTime, id, user.id],
+      );
+    }
+
+    if (isXhr(c)) {
+      return c.html(renderContentDiv(clean, true));
+    }
+    const qs = c.req.query("content_saved") === "1" ? "?content_saved=1" : "";
+    return c.redirect(`/entries/${id}${qs}`, 302);
+  });
+
+  app.post("/:id/content/reset", async (c) => {
+    const user = c.get("user") as { id: number; username: string };
+    const id = parseInt(c.req.param("id"));
+    const entry = await db(c.env).one<Entry>(
+      "SELECT id, content_raw FROM entries WHERE id = ? AND user_id = ?",
+      [id, user.id],
+    ).catch(() => null);
+    if (!entry) return c.text("Not found", 404);
+    if (entry.content_raw == null) return c.text("No original saved", 400);
+
+    const restored = entry.content_raw;
+    const readingTime = computeReadingTime(restored);
+    await db(c.env).run(
+      "UPDATE entries SET content = ?, reading_time = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+      [restored, readingTime, id, user.id],
+    );
+
+    if (isXhr(c)) {
+      return c.html(renderContentDiv(restored, true));
+    }
+    return c.redirect(`/entries/${id}`, 302);
   });
 
   app.post("/:id/delete", async (c) => {
