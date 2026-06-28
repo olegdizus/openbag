@@ -5,6 +5,7 @@ import { settingsRoutes } from "./features/settings";
 import { entryWebRoutes } from "./features/entries";
 import { shareRoutes as webShareRoutes } from "./features/share";
 import { importRoutes as webImportRoutes } from "./features/import";
+import { layout, escapeHtml } from "./templates/layout";
 import { createUser, RegistrationDisabledError } from "@wallabag/auth";
 import { sessionMiddleware, D1Client, isRegistrationEnabled } from "@wallabag/core";
 
@@ -31,58 +32,47 @@ export function webRoutes() {
 
   app.get("/signup", (c) => {
     if (!isRegistrationEnabled(c.env)) {
-      return c.html(`
-        <!DOCTYPE html>
-        <html>
-          <head><title>Not Found</title>
-            <style>body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }</style>
-          </head>
-          <body>
-            <h1>404</h1>
-            <p>This page does not exist.</p>
-            <p><a href="/login">Login</a></p>
-          </body>
-        </html>
-      `, 404);
+      return c.html(layout({
+        title: "Not Found",
+        hideNav: true,
+        narrow: true,
+        body: `      <h1>404</h1>
+      <p>This page does not exist.</p>
+      <p><a href="/login">Login</a></p>`,
+      }), 404);
     }
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Sign Up</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-          <style>
-            body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }
-            input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
-            button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
-            .error { color: #dc2626; }
-          </style>
-        </head>
-        <body>
-          <h1>Create Account</h1>
-          <form method="post" action="/signup" hx-post="/signup" hx-target="body" hx-swap="outerHTML">
-            <div>
-              <label>Username</label>
-              <input type="text" name="username" required minlength="3" maxlength="32"/>
-            </div>
-            <div>
-              <label>Email</label>
-              <input type="email" name="email"/>
-            </div>
-            <div>
-              <label>Password</label>
-              <input type="password" name="password" required minlength="8"/>
-            </div>
-            <button type="submit">Sign Up</button>
-          </form>
-          <p>Already have an account? <a href="/login">Login</a></p>
-        </body>
-      </html>
-    `);
+    return c.html(layout({
+      title: "Sign Up",
+      hideNav: true,
+      narrow: true,
+      body: `      <h1>Create Account</h1>
+      <form method="post" action="/signup">
+        <fieldset>
+          <label for="su-username">Username</label>
+          <input id="su-username" type="text" name="username" required minlength="3" maxlength="32" autocomplete="username"/>
+        </fieldset>
+        <fieldset>
+          <label for="su-email">Email (optional)</label>
+          <input id="su-email" type="email" name="email" autocomplete="email"/>
+        </fieldset>
+        <fieldset>
+          <label for="su-password">Password</label>
+          <input id="su-password" type="password" name="password" required minlength="8" autocomplete="new-password"/>
+        </fieldset>
+        <button type="submit">Sign Up</button>
+      </form>
+      <p>Already have an account? <a href="/login">Login</a></p>`,
+    }));
   });
 
   app.post("/signup", async (c) => {
     if (!isRegistrationEnabled(c.env)) {
-      return c.html(`<h1>404</h1><p>Not found</p><a href="/login">Login</a>`, 404);
+      return c.html(layout({
+        title: "Not Found",
+        hideNav: true,
+        narrow: true,
+        body: `      <h1>404</h1>\n      <p>Not found</p>\n      <p><a href="/login">Login</a></p>`,
+      }), 404);
     }
     const body = await c.req.parseBody();
     const username = typeof body.username === "string" ? body.username.trim() : "";
@@ -90,7 +80,29 @@ export function webRoutes() {
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!username || username.length < 3 || !password || password.length < 8) {
-      return c.html(`<h1 class="error">Invalid input</h1><p>Username (3+ chars) and password (8+ chars) required.</p><a href="/signup">Back</a>`, 400);
+      return c.html(layout({
+        title: "Sign Up",
+        hideNav: true,
+        narrow: true,
+        body: `      <div class="alert alert-error" role="alert">Username (3+ chars) and password (8+ chars) required.</div>
+      <h1>Create Account</h1>
+      <form method="post" action="/signup">
+        <fieldset>
+          <label for="su-username">Username</label>
+          <input id="su-username" type="text" name="username" value="${escapeHtml(username)}" required minlength="3" maxlength="32" autocomplete="username"/>
+        </fieldset>
+        <fieldset>
+          <label for="su-email">Email (optional)</label>
+          <input id="su-email" type="email" name="email" value="${escapeHtml(email)}" autocomplete="email"/>
+        </fieldset>
+        <fieldset>
+          <label for="su-password">Password</label>
+          <input id="su-password" type="password" name="password" required minlength="8" autocomplete="new-password"/>
+        </fieldset>
+        <button type="submit">Sign Up</button>
+      </form>
+      <p>Already have an account? <a href="/login">Login</a></p>`,
+      }), 400);
     }
 
     try {
@@ -99,9 +111,20 @@ export function webRoutes() {
       return c.redirect("/", 302);
     } catch (e) {
       if (e instanceof RegistrationDisabledError) {
-        return c.html(`<h1>404</h1><p>Not found</p><a href="/login">Login</a>`, 404);
+        return c.html(layout({
+          title: "Not Found",
+          hideNav: true,
+          narrow: true,
+          body: `      <h1>404</h1>\n      <p>Not found</p>\n      <p><a href="/login">Login</a></p>`,
+        }), 404);
       }
-      return c.html(`<h1 class="error">Sign up failed</h1><p>${(e as Error).message}</p><a href="/signup">Back</a>`, 400);
+      return c.html(layout({
+        title: "Sign Up",
+        hideNav: true,
+        narrow: true,
+        body: `      <div class="alert alert-error" role="alert">${escapeHtml((e as Error).message)}</div>
+      <p><a href="/signup">Back to sign up</a></p>`,
+      }), 400);
     }
   });
 
@@ -123,59 +146,31 @@ export function webRoutes() {
   app.get("/", (c) => {
     const user = c.get("user");
     if (user) {
-      return c.html(`
-        <!DOCTYPE html>
-        <html>
-          <head><title>Wallabag CF</title>
-            <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-            <style>
-              body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
-              nav { display: flex; gap: 16px; margin-bottom: 24px; align-items: center; }
-              nav a { color: #2563eb; text-decoration: none; }
-              .card { border: 1px solid #e5e7eb; padding: 16px; margin: 12px 0; border-radius: 6px; }
-            </style>
-          </head>
-          <body>
-            <nav>
-              <strong>Wallabag CF</strong>
-              <span>Welcome, ${user.username}</span>
-              <a href="/entries">Entries</a>
-              <a href="/settings">Settings</a>
-              <a href="/developer">Developer</a>
-              <form method="post" action="/logout" style="display:inline">
-                <button type="submit" style="background:none;border:none;color:#2563eb;cursor:pointer;text-decoration:underline;">Logout</button>
-              </form>
-            </nav>
-            <h1>Dashboard</h1>
-            <div class="card">
-              <h2>Quick Start</h2>
-              <ul>
-                <li><a href="/entries">Browse entries</a></li>
-                <li><a href="/settings">Configure your account</a></li>
-                <li><a href="/developer">Manage OAuth clients</a></li>
-                <li><a href="/import">Import bookmarks</a></li>
-              </ul>
-            </div>
-          </body>
-        </html>
-      `);
+      return c.html(layout({
+        title: "Wallabag CF",
+        user,
+        body: `      <h1>Dashboard</h1>
+      <div class="card">
+        <h2>Quick Start</h2>
+        <ul>
+          <li><a href="/entries">Browse entries</a></li>
+          <li><a href="/import">Import bookmarks</a></li>
+          <li><a href="/settings">Configure your account</a></li>
+          <li><a href="/developer">Manage OAuth clients</a></li>
+        </ul>
+      </div>`,
+      }));
     }
     const signupLink = isRegistrationEnabled(c.env)
       ? ` or <a href="/signup">Sign up</a>`
       : "";
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Wallabag CF</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-          <style>body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }</style>
-        </head>
-        <body>
-          <h1>Welcome to Wallabag CF</h1>
-          <p><a href="/login">Login</a>${signupLink}</p>
-        </body>
-      </html>
-    `);
+    return c.html(layout({
+      title: "Wallabag CF",
+      hideNav: true,
+      narrow: true,
+      body: `      <h1>Welcome to Wallabag CF</h1>
+      <p><a href="/login">Login</a>${signupLink}</p>`,
+    }));
   });
   return app;
 }

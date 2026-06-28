@@ -22,7 +22,7 @@
 | API framework | Hono |
 | Validation | Typia v13 (compile-time AST transforms) |
 | Build pipeline | ttsc → Wrangler (esbuild) |
-| Frontend UI | HTMX + server-rendered HTML |
+| Frontend UI | Native semantic HTML + server-rendered, progressive-enhancement JS |
 | Headless browser | Cloudflare Browser Run |
 | Background jobs | Cloudflare Cron Triggers + Queues |
 | Image proxy | Cloudflare Cache API |
@@ -102,7 +102,7 @@ wallabag_cf_worker/
 │   │       │   └── users/           # /api/user endpoint
 │   │       └── index.ts             # Hono app + Worker fetch/scheduled handlers
 │   │
-│   └── web/                         # HTMX management UI
+│   └── web/                         # Server-rendered HTML management UI
 │       └── src/
 │           ├── features/
 │           │   ├── auth/            # Login page, session handling
@@ -110,8 +110,11 @@ wallabag_cf_worker/
 │           │   ├── settings/        # User config pages
 │           │   ├── entries/         # Basic article list/detail views
 │           │   └── share/           # Public share page rendering
-│           ├── templates/           # HTML template layouts
-│           └── assets/              # CSS, HTMX, static files
+│           ├── templates/           # HTML layout helper
+│           └── assets/              # (Reserved) static asset sources
+│
+│   # Static assets (CSS, progressive-enhancement JS) live in
+│   # packages/web/public/ and are served via the wrangler `assets` binding.
 │
 ├── migrations/                      # D1 SQL migrations
 │   ├── 0001_initial_schema.sql
@@ -473,8 +476,8 @@ to original URL.
 
 ## 10. Import Sources
 
-Import is a web UI feature (file upload via HTMX form). Processing is enqueued
-to Cloudflare Queues.
+Import is a web UI feature (standard HTML file upload form). Processing is
+enqueued to Cloudflare Queues.
 
 Supported sources:
 

@@ -1,42 +1,36 @@
 import { Hono } from "hono";
 import { verifyPasswordAgainst } from "@wallabag/auth";
 import { isRegistrationEnabled } from "@wallabag/core";
+import { layout } from "../../templates/layout";
 
 export function loginRoutes() {
   const app = new Hono();
 
   app.get("/", (c) => {
+    const error = c.req.query("error");
     const signupLink = isRegistrationEnabled(c.env)
-      ? `\n        <p>No account? <a href="/signup">Sign up</a></p>`
+      ? `\n      <p>No account? <a href="/signup">Sign up</a></p>`
       : "";
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Login</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-          <style>
-            body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }
-            input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
-            button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
-            .error { color: #dc2626; }
-          </style>
-        </head>
-        <body>
-          <h1>Login</h1>
-          <form method="post" action="/login" hx-post="/login" hx-target="body" hx-swap="outerHTML">
-            <div>
-              <label>Username</label>
-              <input type="text" name="username" required/>
-            </div>
-            <div>
-              <label>Password</label>
-              <input type="password" name="password" required/>
-            </div>
-            <button type="submit">Login</button>
-          </form>${signupLink}
-        </body>
-      </html>
-    `);
+    const alert = error
+      ? `      <div class="alert alert-error" role="alert">${error}</div>\n`
+      : "";
+    return c.html(layout({
+      title: "Login",
+      hideNav: true,
+      narrow: true,
+      body: `${alert}      <h1>Login</h1>
+      <form method="post" action="/login">
+        <fieldset>
+          <label for="li-username">Username</label>
+          <input id="li-username" type="text" name="username" required autocomplete="username"/>
+        </fieldset>
+        <fieldset>
+          <label for="li-password">Password</label>
+          <input id="li-password" type="password" name="password" required autocomplete="current-password"/>
+        </fieldset>
+        <button type="submit">Login</button>
+      </form>${signupLink}`,
+    }));
   });
 
   app.post("/", async (c) => {
@@ -45,12 +39,12 @@ export function loginRoutes() {
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!username || !password) {
-      return c.html(`<h1 class="error">Invalid credentials</h1><a href="/login">Back</a>`, 401);
+      return c.redirect("/login?error=" + encodeURIComponent("Invalid credentials"), 302);
     }
 
     const valid = await verifyPasswordAgainst(c.env, username, password);
     if (!valid) {
-      return c.html(`<h1 class="error">Invalid credentials</h1><a href="/login">Back</a>`, 401);
+      return c.redirect("/login?error=" + encodeURIComponent("Invalid credentials"), 302);
     }
 
     c.header("Set-Cookie", `session=${encodeURIComponent(username)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000`);

@@ -1,10 +1,9 @@
 import { Hono } from "hono";
-import { findClient, createClient, listClients, deleteClient } from "./features/clients";
-import { createAccessToken, createRefreshToken, findAccessToken, revokeAccessToken, revokeRefreshToken } from "./features/tokens";
+import { findClient } from "./features/clients";
+import { createAccessToken, createRefreshToken } from "./features/tokens";
 import { passwordGrant, refreshTokenGrant, exchangeAuthCode } from "./features/grants";
 import { findUserByUsername, createUser } from "./features/users";
 import { D1Client } from "@wallabag/core";
-import { sessionMiddleware } from "@wallabag/core";
 
 function randomToken(bytes: number): string {
   const buf = new Uint8Array(bytes);
@@ -189,143 +188,6 @@ export function authRoutes() {
     const url = new URL(redirectUri || "/");
     url.searchParams.set("code", authCode);
     return c.redirect(url.toString(), 302);
-  });
-
-  // Developer pages (web UI)
-  app.use("/developer/*", sessionMiddleware());
-  app.use("/developer", sessionMiddleware());
-  app.get("/developer", async (c) => {
-    const sessionUser = c.get("user");
-    if (!sessionUser) return c.redirect("/login", 302);
-    const clients = await listClients(c.env, sessionUser.id);
-    const items = clients.map((cl: any) => {
-      let redirectUris: string[] = [];
-      let allowedGrantTypes: string[] = [];
-      try { redirectUris = JSON.parse(cl.redirect_uris || "[]"); } catch {}
-      try { allowedGrantTypes = JSON.parse(cl.allowed_grant_types || "[]"); } catch {}
-      return {
-        id: cl.id,
-        client_id: `${cl.id}_${cl.random_id}`,
-        client_secret: cl.secret,
-        name: cl.name,
-        redirect_uris: redirectUris,
-        allowed_grant_types: allowedGrantTypes,
-        created_at: cl.created_at,
-      };
-    });
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Developer</title>
-          <style>
-            body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
-            nav { display: flex; gap: 16px; margin-bottom: 24px; align-items: center; }
-            nav a { color: #2563eb; text-decoration: none; }
-            .client-card { border: 1px solid #e5e7eb; padding: 16px; margin: 12px 0; border-radius: 8px; }
-            .client-card h3 { margin: 0 0 12px; }
-            .cred-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
-            .cred-row code { background: #f1f5f9; padding: 6px 10px; border-radius: 4px; font-size: 13px; word-break: break-all; flex: 1; }
-            .btn-sm { padding: 4px 10px; font-size: 13px; cursor: pointer; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; }
-            .btn-sm:hover { background: #f9fafb; }
-            .btn-danger { color: #dc2626; border-color: #fca5a5; }
-            .btn-danger:hover { background: #fef2f2; }
-            .btn-create { display: inline-block; padding: 8px 16px; background: #2563eb; color: white; text-decoration: none; border-radius: 4px; margin-bottom: 16px; }
-          </style>
-        </head>
-        <body>
-          <nav>
-            <strong>Wallabag CF</strong>
-            <a href="/">Dashboard</a>
-            <a href="/entries">Entries</a>
-            <a href="/developer">Developer</a>
-          </nav>
-          <h1>OAuth Clients</h1>
-          <a href="/developer/client/create" class="btn-create">+ Create new client</a>
-          ${items.length === 0 ? '<p style="color:#999">No clients yet.</p>' : items.map((cl: any) => `
-            <div class="client-card">
-              <h3>${cl.name}</h3>
-              <div class="cred-row">
-                <strong style="min-width:100px">Client ID:</strong>
-                <code>${cl.client_id}</code>
-                <button class="btn-sm" onclick="navigator.clipboard.writeText('${cl.client_id}'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500)">Copy</button>
-              </div>
-              <div class="cred-row">
-                <strong style="min-width:100px">Client Secret:</strong>
-                <code>${cl.client_secret}</code>
-                <button class="btn-sm" onclick="navigator.clipboard.writeText('${cl.client_secret}'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1500)">Copy</button>
-              </div>
-              <div style="margin-top: 12px; display: flex; gap: 8px; align-items: center;">
-                <form method="post" action="/developer/client/delete/${cl.id}" style="display:inline">
-                  <button type="submit" class="btn-sm btn-danger">Delete</button>
-                </form>
-                ${cl.created_at ? '<span style="color:#999; font-size:13px">Created ' + new Date(cl.created_at).toLocaleDateString() + '</span>' : ''}
-              </div>
-            </div>
-          `).join("")}
-        </body>
-      </html>
-    `);
-  });
-
-  app.get("/developer/client/create", (c) => {
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Create OAuth Client</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        </head>
-        <body>
-          <h1>Create OAuth Client</h1>
-          <form method="post" action="/developer/client/create" hx-post="/developer/client/create" hx-target="body" hx-swap="outerHTML">
-            <div>
-              <label>Name: <input type="text" name="name" required/></label>
-            </div>
-            <div>
-              <label>Redirect URIs (comma separated): <input type="text" name="redirect_uris" value="http://localhost"/></label>
-            </div>
-            <button type="submit">Create</button>
-          </form>
-          <p><a href="/developer">Back</a></p>
-        </body>
-      </html>
-    `);
-  });
-
-  app.post("/developer/client/create", async (c) => {
-    const body = await c.req.parseBody();
-    const name = typeof body.name === "string" ? body.name : "Unnamed";
-    const redirectUrisRaw = typeof body.redirect_uris === "string" ? body.redirect_uris : "http://localhost";
-    const redirectUris = redirectUrisRaw.split(",").map(s => s.trim()).filter(Boolean);
-    const allowedGrantTypes = ["token", "authorization_code", "password", "refresh_token"];
-    const sessionUser = c.get("user");
-    if (!sessionUser) return c.redirect("/login", 302);
-    const client = await createClient(c.env, sessionUser.id, name, redirectUris, allowedGrantTypes);
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Client Created</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        </head>
-        <body>
-          <h1>Client Created</h1>
-          <p><strong>Client ID:</strong> ${client.id}_${client.random_id}</p>
-          <p><strong>Client Secret:</strong> ${client.secret}</p>
-          <p>Store the secret securely — it will not be shown again.</p>
-          <p><a href="/developer">Back to developers</a></p>
-        </body>
-      </html>
-    `);
-  });
-
-  app.post("/developer/client/delete/:id", async (c) => {
-    const sessionUser = c.get("user");
-    if (!sessionUser) return c.redirect("/login", 302);
-    const id = parseInt(c.req.param("id"));
-    await deleteClient(c.env, sessionUser.id, id);
-    return c.redirect("/developer", 302);
   });
 
   return app;

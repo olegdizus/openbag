@@ -1,81 +1,70 @@
 import { Hono } from "hono";
 import { D1Client } from "@wallabag/core";
+import { layout, escapeHtml } from "../../templates/layout";
 
 const db = (env: any) => new D1Client(env.DB);
 
-function escapeHtml(s: unknown): string {
-  if (s == null) return "";
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+type Entry = {
+  id: number;
+  title: string;
+  url: string;
+  content: string | null;
+  created_at: string;
+  is_archived: number;
+  is_starred: number;
+};
+
+function isXhr(c: any): boolean {
+  return c.req.header("X-Requested-With") === "XMLHttpRequest";
 }
 
-const buttonStyles = `
-  .actions { white-space: nowrap; }
-  .actions button, .actions form { display: inline; margin-right: 4px; }
-  .btn-toggle, .btn-star, .btn-danger, .btn-edit {
-    padding: 2px 8px; font-size: 13px; cursor: pointer;
-    border: 1px solid #d1d5db; background: #f9fafb; border-radius: 4px;
-  }
-  .btn-star.is-on { color: #f59e0b; border-color: #f59e0b; background: #fffbeb; }
-  .btn-danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
-  .btn-danger:hover { background: #dc2626; color: white; }
-  .btn-edit { font-size: 12px; margin-left: 8px; vertical-align: middle; }
-  .title-edit { display: flex; gap: 8px; align-items: center; margin: 0 0 16px; }
-  .title-edit input { flex: 1; padding: 6px; font-size: 18px; box-sizing: border-box; }
-  .title-edit button { padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  .btn-cancel { color: #2563eb; text-decoration: none; padding: 6px 4px; }
-`;
+function nextUrl(c: any, fallback: string): string {
+  const n = c.req.query("next");
+  return n && n.startsWith("/") ? n : fallback;
+}
 
-function renderRow(e: any): string {
+function renderRow(e: Entry): string {
   const id = e.id;
   const archived = !!e.is_archived;
   const starred = !!e.is_starred;
-  return `
-      <tr id="entry-row-${id}">
-        <td><a href="/entries/${id}">${escapeHtml(e.title || e.url)}</a></td>
-        <td class="actions">
-          <button class="btn-toggle" hx-post="/entries/${id}/archive?view=list" hx-target="#entry-row-${id}" hx-swap="outerHTML">${archived ? "Unarchive" : "Archive"}</button>
-          <button class="btn-star ${starred ? "is-on" : ""}" hx-post="/entries/${id}/star?view=list" hx-target="#entry-row-${id}" hx-swap="outerHTML" title="${starred ? "Unstar" : "Star"}">${starred ? "★" : "☆"}</button>
-          <button class="btn-danger" hx-post="/entries/${id}/delete?view=list" hx-target="#entry-row-${id}" hx-swap="outerHTML" hx-confirm="Delete this entry?">✕</button>
-        </td>
-        <td>${archived ? "Yes" : "No"}</td>
-        <td>${starred ? "Yes" : "No"}</td>
-        <td>${escapeHtml(e.created_at)}</td>
-      </tr>`;
+  return `        <tr id="entry-row-${id}">
+          <td><a href="/entries/${id}">${escapeHtml(e.title || e.url)}</a></td>
+          <td class="actions">
+            <form method="post" action="/entries/${id}/archive?next=/entries&view=list"
+                  data-enhance data-target="entry-row-${id}">
+              <button type="submit" class="btn-toggle" name="archive" value="${archived ? "0" : "1"}">${archived ? "Unarchive" : "Archive"}</button>
+            </form>
+            <form method="post" action="/entries/${id}/star?next=/entries&view=list"
+                  data-enhance data-target="entry-row-${id}">
+              <button type="submit" class="btn-star${starred ? " is-on" : ""}" title="${starred ? "Unstar" : "Star"}">${starred ? "★" : "☆"}</button>
+            </form>
+            <form method="post" action="/entries/${id}/delete?next=/entries&view=list"
+                  data-enhance data-target="entry-row-${id}" data-confirm="Delete this entry?">
+              <button type="submit" class="btn-danger">✕</button>
+            </form>
+          </td>
+          <td>${archived ? "Yes" : "No"}</td>
+          <td>${starred ? "Yes" : "No"}</td>
+          <td>${escapeHtml(e.created_at)}</td>
+        </tr>`;
 }
 
-function renderActions(e: any): string {
+function renderActions(e: Entry): string {
   const id = e.id;
   const archived = !!e.is_archived;
   const starred = !!e.is_starred;
-  return `
-            <div class="actions" id="entry-actions-${id}">
-              <button class="btn-toggle" hx-post="/entries/${id}/archive?view=detail" hx-target="#entry-actions-${id}" hx-swap="outerHTML">${archived ? "Unarchive" : "Archive"}</button>
-              <button class="btn-star ${starred ? "is-on" : ""}" hx-post="/entries/${id}/star?view=detail" hx-target="#entry-actions-${id}" hx-swap="outerHTML">${starred ? "★ Unstar" : "☆ Star"}</button>
-              <form method="post" action="/entries/${id}/delete" style="display:inline" onsubmit="return confirm('Delete this entry?')">
-                <button type="submit" class="btn-danger">Delete</button>
+  return `            <div class="actions" id="entry-actions-${id}">
+              <form method="post" action="/entries/${id}/archive?next=/entries/${id}&view=detail"
+                    data-enhance data-target="entry-actions-${id}">
+                <button type="submit" class="btn-toggle">${archived ? "Unarchive" : "Archive"}</button>
               </form>
-            </div>`;
-}
-
-function renderTitleDisplay(e: any): string {
-  const id = e.id;
-  return `            <div id="entry-title-${id}">
-              <h1>${escapeHtml(e.title)}<button class="btn-edit" hx-get="/entries/${id}/edit-title" hx-target="#entry-title-${id}" hx-swap="outerHTML">Edit</button></h1>
-            </div>`;
-}
-
-function renderTitleEditForm(e: any): string {
-  const id = e.id;
-  return `            <div id="entry-title-${id}">
-              <form class="title-edit" hx-post="/entries/${id}/title" hx-target="#entry-title-${id}" hx-swap="outerHTML">
-                <input type="text" name="title" value="${escapeHtml(e.title)}" required>
-                <button type="submit">Save</button>
-                <a class="btn-cancel" href="/entries/${id}" hx-get="/entries/${id}/title" hx-target="#entry-title-${id}" hx-swap="outerHTML">Cancel</a>
+              <form method="post" action="/entries/${id}/star?next=/entries/${id}&view=detail"
+                    data-enhance data-target="entry-actions-${id}">
+                <button type="submit" class="btn-star${starred ? " is-on" : ""}">${starred ? "★ Unstar" : "☆ Star"}</button>
+              </form>
+              <form method="post" action="/entries/${id}/delete?next=/entries&view=detail"
+                    onsubmit="return confirm('Delete this entry?')">
+                <button type="submit" class="btn-danger">Delete</button>
               </form>
             </div>`;
 }
@@ -84,7 +73,7 @@ export function entryWebRoutes() {
   const app = new Hono();
 
   app.get("/", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const page = parseInt(c.req.query("page") || "1");
     const perPage = 20;
     const offset = (page - 1) * perPage;
@@ -96,93 +85,69 @@ export function entryWebRoutes() {
     const entries = await db(c.env).all(
       "SELECT * FROM entries WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
       [user.id, perPage, offset]
-    );
+    ) as Entry[];
 
-    const rows = entries.map(renderRow).join("");
+    const rows = entries.map(renderRow).join("\n") || `        <tr><td colspan="5" class="text-muted">No entries yet</td></tr>`;
+    const totalPages = Math.max(1, Math.ceil((totalRow?.total ?? 0) / perPage));
+    const importedName = c.req.query("imported");
+    const importAlert = importedName
+      ? `      <div class="alert alert-success" role="status">Imported <strong>${escapeHtml(importedName)}</strong> (${c.req.query("size") || "?"} KB). Entries will appear as parsing completes.</div>\n`
+      : "";
 
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Entries</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-          <style>
-            body { font-family: system-ui; max-width: 1000px; margin: 40px auto; padding: 20px; }
-            nav { display: flex; gap: 16px; margin-bottom: 24px; }
-            nav a { color: #2563eb; text-decoration: none; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; }
-            a { color: #2563eb; }
-            ${buttonStyles}
-          </style>
-        </head>
-        <body>
-          <nav>
-            <a href="/">Dashboard</a>
-            <a href="/settings">Settings</a>
-            <a href="/developer">Developer</a>
-            <a href="/import">Import</a>
-          </nav>
-          <h1>Entries</h1>
-          <p><a href="/entries/new">+ Add entry</a></p>
-          <table>
-            <thead><tr><th>Title</th><th>Actions</th><th>Archived</th><th>Starred</th><th>Created</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="5">No entries yet</td></tr>'}</tbody>
-          </table>
-          <div style="margin-top:16px">
-            ${page > 1 ? `<a href="/entries?page=${page - 1}">Previous</a>` : ""}
-            <span>Page ${page}</span>
-            ${entries.length === perPage ? `<a href="/entries?page=${page + 1}">Next</a>` : ""}
-          </div>
-        </body>
-      </html>
-    `);
+    return c.html(layout({
+      title: "Entries",
+      user,
+      body: `${importAlert}      <h1>Entries</h1>
+      <p><a href="/entries/new">+ Add entry</a></p>
+      <table>
+        <thead>
+          <tr><th scope="col">Title</th><th scope="col">Actions</th><th scope="col">Archived</th><th scope="col">Starred</th><th scope="col">Created</th></tr>
+        </thead>
+        <tbody>
+${rows}
+        </tbody>
+      </table>
+      <nav class="pagination" aria-label="Pagination">
+        ${page > 1 ? `<a href="/entries?page=${page - 1}" rel="prev">Previous</a>` : '<span class="text-muted">Previous</span>'}
+        <span class="current">Page ${page} of ${totalPages}</span>
+        ${page < totalPages ? `<a href="/entries?page=${page + 1}" rel="next">Next</a>` : '<span class="text-muted">Next</span>'}
+      </nav>`,
+    }));
   });
 
-  app.get("/new", (c) => c.html(`
-    <!DOCTYPE html>
-    <html>
-      <head><title>Add Entry</title>
-        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        <style>
-          body { font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 20px; }
-          nav { display: flex; gap: 16px; margin-bottom: 24px; }
-          nav a { color: #2563eb; text-decoration: none; }
-          input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
-          button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
-        </style>
-      </head>
-      <body>
-        <nav>
-          <a href="/">Dashboard</a>
-          <a href="/entries">Entries</a>
-          <a href="/settings">Settings</a>
-          <a href="/developer">Developer</a>
-          <a href="/import">Import</a>
-        </nav>
-        <h1>Add Entry</h1>
-        <form method="post" action="/entries" hx-post="/entries" hx-target="body" hx-swap="outerHTML">
-          <div>
-            <label>URL</label>
-            <input type="url" name="url" required placeholder="https://example.com/article"/>
-          </div>
-          <div>
-            <label>Title (optional)</label>
-            <input type="text" name="title" placeholder="Article title"/>
-          </div>
-          <button type="submit">Save</button>
-        </form>
-      </body>
-    </html>
-  `));
+  app.get("/new", (c) => {
+    const user = c.get("user") as { id: number; username: string };
+    return c.html(layout({
+      title: "Add Entry",
+      user,
+      body: `      <h1>Add Entry</h1>
+      <form method="post" action="/entries">
+        <fieldset>
+          <label for="en-url">URL</label>
+          <input id="en-url" type="url" name="url" required placeholder="https://example.com/article"/>
+        </fieldset>
+        <fieldset>
+          <label for="en-title">Title (optional)</label>
+          <input id="en-title" type="text" name="title" placeholder="Article title"/>
+        </fieldset>
+        <button type="submit">Save</button>
+      </form>`,
+    }));
+  });
 
   app.post("/", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const body = await c.req.parseBody();
     const url = typeof body.url === "string" ? body.url : "";
     const title = typeof body.title === "string" ? body.title : "";
 
     if (!url) {
-      return c.html('<h1>URL required</h1><a href="/entries/new">Back</a>', 400);
+      return c.html(layout({
+        title: "Add Entry",
+        user,
+        body: `      <div class="alert alert-error" role="alert">URL required.</div>
+      <p><a href="/entries/new">Back</a></p>`,
+      }), 400);
     }
 
     const urlHash = Array.from(new TextEncoder().encode(url)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
@@ -195,126 +160,109 @@ export function entryWebRoutes() {
   });
 
   app.get("/:id", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
-    const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]).catch(() => null);
+    const entry = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]).catch(() => null);
     if (!entry) return c.text("Not found", 404);
 
     const tags = await db(c.env).all(
       "SELECT t.label FROM tags t JOIN entry_tags et ON et.tag_id = t.id WHERE et.entry_id = ? AND t.user_id = ?",
       [id, user.id]
-    ).catch(() => []);
+    ).catch(() => []) as { label: string }[];
 
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>${escapeHtml(entry.title)}</title>
-          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-          <style>
-            body { font-family: system-ui; max-width: 800px; margin: 40px auto; padding: 20px; }
-            nav { display: flex; gap: 16px; margin-bottom: 24px; }
-            nav a { color: #2563eb; text-decoration: none; }
-            .meta { color: #6b7280; font-size: 14px; margin-bottom: 16px; }
-            article { line-height: 1.6; }
-            .tags { margin: 12px 0; }
-            .tag { background: #e5e7eb; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
-            ${buttonStyles}
-          </style>
-        </head>
-        <body>
-          <nav>
-            <a href="/">Dashboard</a>
-            <a href="/entries">Entries</a>
-            <a href="/settings">Settings</a>
-            <a href="/developer">Developer</a>
-            <a href="/import">Import</a>
-          </nav>
-          <article>
-            ${renderTitleDisplay(entry)}
-            <div class="meta">
-              <a href="${escapeHtml(entry.url)}">${escapeHtml(entry.url)}</a> · ${escapeHtml(entry.created_at)}
-              ${entry.is_archived ? " · Archived" : ""}
-              ${entry.is_starred ? " · Starred" : ""}
-            </div>
-            ${renderActions(entry)}
-            <div class="tags">
-              ${tags.map((t: any) => `<span class="tag">${escapeHtml(t.label)}</span>`).join("")}
-            </div>
-            <div>${entry.content || "<p>No content yet. Content will be fetched when the parser pipeline is installed.</p>"}</div>
-          </article>
-        </body>
-      </html>
-    `);
+    const archived = !!entry.is_archived;
+    const starred = !!entry.is_starred;
+    const titleSaved = c.req.query("title_saved") === "1";
+    const titleAlert = titleSaved ? `          <div class="alert alert-success" role="status">Title updated.</div>\n` : "";
+
+    return c.html(layout({
+      title: entry.title || `Entry ${id}`,
+      user,
+      body: `      <article class="entry">
+        <header>
+          <h1>${escapeHtml(entry.title)}
+            <details class="title-edit">
+              <summary>Edit title</summary>
+              <form method="post" action="/entries/${id}/title?next=/entries/${id}&title_saved=1">
+                <input type="text" name="title" value="${escapeHtml(entry.title)}" required aria-label="Title"/>
+                <button type="submit">Save</button>
+              </form>
+            </details>
+          </h1>
+          <p class="entry-meta">
+            <a href="${escapeHtml(entry.url)}">${escapeHtml(entry.url)}</a> · ${escapeHtml(entry.created_at)}
+            ${archived ? " · Archived" : ""}${starred ? " · Starred" : ""}
+          </p>
+        </header>
+${titleAlert}        ${renderActions(entry)}
+        <div class="entry-tags">
+          ${tags.map(t => `<span class="tag">${escapeHtml(t.label)}</span>`).join("")}
+        </div>
+        <div>${entry.content || "<p>No content yet. Content will be fetched when the parser pipeline is installed.</p>"}</div>
+      </article>`,
+    }));
   });
 
   app.post("/:id/archive", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
-    const cur = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+    const cur = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     if (!cur) return c.text("Not found", 404);
     await db(c.env).run(
       "UPDATE entries SET is_archived = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
       [cur.is_archived ? 0 : 1, id, user.id]
     );
-    const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
+    const entry = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+    if (!entry) return c.text("Not found", 404);
+    if (isXhr(c)) {
+      return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
+    }
+    return c.redirect(nextUrl(c, "/entries"), 302);
   });
 
   app.post("/:id/star", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
-    const cur = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+    const cur = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     if (!cur) return c.text("Not found", 404);
     await db(c.env).run(
       "UPDATE entries SET is_starred = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
       [cur.is_starred ? 0 : 1, id, user.id]
     );
-    const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
-  });
-
-  app.get("/:id/title", async (c) => {
-    const user = c.get("user");
-    const id = parseInt(c.req.param("id"));
-    const entry = await db(c.env).one("SELECT id, title FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+    const entry = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     if (!entry) return c.text("Not found", 404);
-    return c.html(renderTitleDisplay(entry));
-  });
-
-  app.get("/:id/edit-title", async (c) => {
-    const user = c.get("user");
-    const id = parseInt(c.req.param("id"));
-    const entry = await db(c.env).one("SELECT id, title FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    if (!entry) return c.text("Not found", 404);
-    return c.html(renderTitleEditForm(entry));
+    if (isXhr(c)) {
+      return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
+    }
+    return c.redirect(nextUrl(c, "/entries"), 302);
   });
 
   app.post("/:id/title", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     const body = await c.req.parseBody();
     const title = typeof body.title === "string" ? body.title.trim() : "";
-    const entry = await db(c.env).one("SELECT id, title FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+    const entry = await db(c.env).one<Entry>("SELECT id, title FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     if (!entry) return c.text("Not found", 404);
     if (!title) {
-      return c.html(renderTitleEditForm(entry));
+      return c.redirect(`/entries/${id}`, 302);
     }
     await db(c.env).run(
       "UPDATE entries SET title = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
       [title, id, user.id]
     );
-    const updated = await db(c.env).one("SELECT id, title FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    return c.html(renderTitleDisplay(updated));
+    const qs = c.req.query("title_saved") === "1" ? "?title_saved=1" : "";
+    return c.redirect(`${nextUrl(c, `/entries/${id}`)}${qs}`, 302);
   });
 
   app.post("/:id/delete", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     await db(c.env).run("DELETE FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    if (c.req.query("view") === "list") {
+    if (isXhr(c)) {
       return c.html("");
     }
-    return c.redirect("/entries", 302);
+    return c.redirect(nextUrl(c, "/entries"), 302);
   });
 
   return app;
