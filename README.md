@@ -111,6 +111,39 @@ npx bcrypt-cli <your-password>
 npm run dev
 ```
 
+## Registration & User Provisioning
+
+Account creation via the web UI (`/signup`) is controlled by the
+`ALLOWED_REGISTRATION` environment variable:
+
+| Value | Behavior |
+|---|---|
+| unset, `true`, `1`, or any other string | Registration **enabled** (default) |
+| `false`, `0`, or empty string | Registration **disabled** — `/signup` returns 404, `/api/info` reports `allowed_registration: false`, and `createUser` refuses |
+
+### Toggling registration
+
+Set the variable without redeploying via either:
+
+```bash
+wrangler secret put ALLOWED_REGISTRATION     # then enter "false"
+```
+
+…or in the Cloudflare dashboard: **Workers & Pages → your Worker → Settings →
+Variables and Secrets → Add**.
+
+Local dev: set `ALLOWED_REGISTRATION` in your `.dev.vars` file.
+
+### Creating users when registration is disabled
+
+Provision users out-of-band with the bundled script — it runs locally and writes
+straight to D1 via `wrangler`, so the registration flag cannot block it:
+
+```bash
+npm run create-user -- --username alice --password 's3cret!' --email alice@example.com
+# add --local to target the dev (miniflare) D1 instead of production
+```
+
 ## API Endpoints
 
 ### Authentication (OAuth2)
@@ -178,6 +211,7 @@ Configure your Wallabag client (mobile app, browser extension, etc.) with:
 | `npm run typecheck` | Type-check without building |
 | `npm run db:migrate` | Apply migrations (production) |
 | `npm run db:migrate:local` | Apply migrations (local) |
+| `npm run create-user` | Provision a user out-of-band (bypasses registration flag) |
 
 ## Environments
 

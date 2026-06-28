@@ -1,10 +1,10 @@
 // Auth middleware — validates Bearer token, attaches user to context
 
 import { D1Client } from "../db";
+import type { Env } from "../types/env";
 
-export interface Bindings {
-  DB: any;
-}
+// Backwards-compatible alias; prefer `Env` from @wallabag/core for new code.
+export type Bindings = Env;
 
 export interface Variables {
   user: {

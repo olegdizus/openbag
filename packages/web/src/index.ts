@@ -5,5 +5,4 @@ export * from "./features/settings";
 export * from "./features/entries";
 export * from "./features/share";
 export * from "./features/import";
-export * from "./features/signup";
 export * from "./routes";

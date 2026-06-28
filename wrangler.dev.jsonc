@@ -2,6 +2,9 @@
   "name": "wallabag-dev",
   "main": "dist/worker.js",
   "compatibility_date": "2026-06-10",
+  "vars": {
+    "ALLOWED_REGISTRATION": "true"
+  },
   "d1_databases": [
     {
       "binding": "DB",

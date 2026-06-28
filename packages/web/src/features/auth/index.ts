@@ -1,38 +1,43 @@
 import { Hono } from "hono";
 import { verifyPasswordAgainst } from "@wallabag/auth";
+import { isRegistrationEnabled } from "@wallabag/core";
 
 export function loginRoutes() {
   const app = new Hono();
 
-  app.get("/", (c) => c.html(`
-    <!DOCTYPE html>
-    <html>
-      <head><title>Login</title>
-        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        <style>
-          body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }
-          input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
-          button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
-          .error { color: #dc2626; }
-        </style>
-      </head>
-      <body>
-        <h1>Login</h1>
-        <form method="post" action="/login" hx-post="/login" hx-target="body" hx-swap="outerHTML">
-          <div>
-            <label>Username</label>
-            <input type="text" name="username" required/>
-          </div>
-          <div>
-            <label>Password</label>
-            <input type="password" name="password" required/>
-          </div>
-          <button type="submit">Login</button>
-        </form>
-        <p>No account? <a href="/signup">Sign up</a></p>
-      </body>
-    </html>
-  `));
+  app.get("/", (c) => {
+    const signupLink = isRegistrationEnabled(c.env)
+      ? `\n        <p>No account? <a href="/signup">Sign up</a></p>`
+      : "";
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Login</title>
+          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+          <style>
+            body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }
+            input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
+            button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
+            .error { color: #dc2626; }
+          </style>
+        </head>
+        <body>
+          <h1>Login</h1>
+          <form method="post" action="/login" hx-post="/login" hx-target="body" hx-swap="outerHTML">
+            <div>
+              <label>Username</label>
+              <input type="text" name="username" required/>
+            </div>
+            <div>
+              <label>Password</label>
+              <input type="password" name="password" required/>
+            </div>
+            <button type="submit">Login</button>
+          </form>${signupLink}
+        </body>
+      </html>
+    `);
+  });
 
   app.post("/", async (c) => {
     const body = await c.req.parseBody();

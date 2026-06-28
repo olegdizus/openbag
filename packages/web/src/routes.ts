@@ -5,8 +5,8 @@ import { settingsRoutes } from "./features/settings";
 import { entryWebRoutes } from "./features/entries";
 import { shareRoutes as webShareRoutes } from "./features/share";
 import { importRoutes as webImportRoutes } from "./features/import";
-import { createUser } from "@wallabag/auth";
-import { sessionMiddleware, D1Client } from "@wallabag/core";
+import { createUser, RegistrationDisabledError } from "@wallabag/auth";
+import { sessionMiddleware, D1Client, isRegistrationEnabled } from "@wallabag/core";
 
 export function webRoutes() {
   const app = new Hono() as any;
@@ -29,41 +29,61 @@ export function webRoutes() {
 
   app.route("/login", loginRoutes());
 
-  app.get("/signup", (c) => c.html(`
-    <!DOCTYPE html>
-    <html>
-      <head><title>Sign Up</title>
-        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        <style>
-          body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }
-          input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
-          button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
-          .error { color: #dc2626; }
-        </style>
-      </head>
-      <body>
-        <h1>Create Account</h1>
-        <form method="post" action="/signup" hx-post="/signup" hx-target="body" hx-swap="outerHTML">
-          <div>
-            <label>Username</label>
-            <input type="text" name="username" required minlength="3" maxlength="32"/>
-          </div>
-          <div>
-            <label>Email</label>
-            <input type="email" name="email"/>
-          </div>
-          <div>
-            <label>Password</label>
-            <input type="password" name="password" required minlength="8"/>
-          </div>
-          <button type="submit">Sign Up</button>
-        </form>
-        <p>Already have an account? <a href="/login">Login</a></p>
-      </body>
-    </html>
-  `));
+  app.get("/signup", (c) => {
+    if (!isRegistrationEnabled(c.env)) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html>
+          <head><title>Not Found</title>
+            <style>body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }</style>
+          </head>
+          <body>
+            <h1>404</h1>
+            <p>This page does not exist.</p>
+            <p><a href="/login">Login</a></p>
+          </body>
+        </html>
+      `, 404);
+    }
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Sign Up</title>
+          <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+          <style>
+            body { font-family: system-ui; max-width: 400px; margin: 50px auto; padding: 20px; }
+            input { width: 100%; padding: 8px; margin: 4px 0 12px; box-sizing: border-box; }
+            button { padding: 10px 20px; background: #2563eb; color: white; border: none; cursor: pointer; }
+            .error { color: #dc2626; }
+          </style>
+        </head>
+        <body>
+          <h1>Create Account</h1>
+          <form method="post" action="/signup" hx-post="/signup" hx-target="body" hx-swap="outerHTML">
+            <div>
+              <label>Username</label>
+              <input type="text" name="username" required minlength="3" maxlength="32"/>
+            </div>
+            <div>
+              <label>Email</label>
+              <input type="email" name="email"/>
+            </div>
+            <div>
+              <label>Password</label>
+              <input type="password" name="password" required minlength="8"/>
+            </div>
+            <button type="submit">Sign Up</button>
+          </form>
+          <p>Already have an account? <a href="/login">Login</a></p>
+        </body>
+      </html>
+    `);
+  });
 
   app.post("/signup", async (c) => {
+    if (!isRegistrationEnabled(c.env)) {
+      return c.html(`<h1>404</h1><p>Not found</p><a href="/login">Login</a>`, 404);
+    }
     const body = await c.req.parseBody();
     const username = typeof body.username === "string" ? body.username.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
@@ -78,6 +98,9 @@ export function webRoutes() {
       c.header("Set-Cookie", `session=${encodeURIComponent(username)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000`);
       return c.redirect("/", 302);
     } catch (e) {
+      if (e instanceof RegistrationDisabledError) {
+        return c.html(`<h1>404</h1><p>Not found</p><a href="/login">Login</a>`, 404);
+      }
       return c.html(`<h1 class="error">Sign up failed</h1><p>${(e as Error).message}</p><a href="/signup">Back</a>`, 400);
     }
   });
@@ -137,6 +160,9 @@ export function webRoutes() {
         </html>
       `);
     }
+    const signupLink = isRegistrationEnabled(c.env)
+      ? ` or <a href="/signup">Sign up</a>`
+      : "";
     return c.html(`
       <!DOCTYPE html>
       <html>
@@ -146,7 +172,7 @@ export function webRoutes() {
         </head>
         <body>
           <h1>Welcome to Wallabag CF</h1>
-          <p><a href="/login">Login</a> or <a href="/signup">Sign up</a></p>
+          <p><a href="/login">Login</a>${signupLink}</p>
         </body>
       </html>
     `);

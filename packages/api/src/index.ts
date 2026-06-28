@@ -9,7 +9,7 @@ import { importRoutes } from "./features/import";
 import { userRoutes } from "./features/users";
 import { shareRoutes } from "./features/share";
 import { authRoutes } from "@wallabag/auth";
-import { corsMiddleware, loggingMiddleware, errorMiddleware, authMiddleware } from "@wallabag/core";
+import { corsMiddleware, loggingMiddleware, errorMiddleware, authMiddleware, isRegistrationEnabled } from "@wallabag/core";
 
 export const app = new Hono();
 
@@ -21,7 +21,11 @@ app.use("*", errorMiddleware());
 // Public routes (no auth required)
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 app.get("/api/version", (c) => c.text("2.5.0"));
-app.get("/api/info", (c) => c.json({ appname: "Wallabag CF Worker", version: "0.1.0", allowed_registration: true }));
+  app.get("/api/info", (c) => c.json({
+    appname: "Wallabag CF Worker",
+    version: "0.1.0",
+    allowed_registration: isRegistrationEnabled(c.env),
+  }));
 
 // Mount auth routes (OAuth2)
 app.route("/", authRoutes());

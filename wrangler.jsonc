@@ -2,6 +2,9 @@
   "name": "wallabag",
   "main": "src/worker.ts",
   "compatibility_date": "2026-06-10",
+  "vars": {
+    "ALLOWED_REGISTRATION": "true"
+  },
   "alias": {
     "@wallabag/core": "./packages/core/src/index.ts",
     "@wallabag/auth": "./packages/auth/src/index.ts",
@@ -13,7 +16,8 @@
     {
       "binding": "DB",
       "database_name": "wallabag-db",
-      "database_id": "REDACTED-D1-ID"
+      "database_id": "REDACTED-D1-ID",
+      "migrations_dir": "./migrations"
     }
   ],
   "queues": {

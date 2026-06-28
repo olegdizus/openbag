@@ -1,3 +1,8 @@
+# Account registration toggle ("true" or "false"). When "false", the /signup UI
+# and any account-creation path are disabled. Override in the Cloudflare dashboard
+# (Workers → your Worker → Settings → Variables) or via `wrangler secret put`.
+ALLOWED_REGISTRATION=true
+
 # Local development secrets (copy to .dev.vars)
 # wrangler secret put ADMIN_USERNAME
 # wrangler secret put ADMIN_PASSWORD_HASH

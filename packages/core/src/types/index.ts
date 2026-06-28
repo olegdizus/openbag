@@ -1,3 +1,6 @@
+// Central Worker bindings & shared API response types
+export * from "./env";
+
 // Shared API response types
 export interface TagResponse {
   id: number;
