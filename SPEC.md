@@ -1,11 +1,15 @@
 # Wallabag CF Worker — Architectural Specification
 
-> A fully Wallabag v2 API-compatible read-it-later service running on Cloudflare Workers + D1.
+> A fully Wallabag v2 API-compatible read-it-later service running on Cloudflare
+> Workers + D1.
 
 ## 1. Project Goals
 
-- **1:1 API compatibility** with Wallabag v2 — every official and third-party client (browser extensions, mobile apps, CLI tools) must work without modification.
-- **Personal drop-in replacement** for a self-hosted Wallabag instance. Deploy on Cloudflare's free/paid tier with zero server management.
+- **1:1 API compatibility** with Wallabag v2 — every official and third-party
+  client (browser extensions, mobile apps, CLI tools) must work without
+  modification.
+- **Personal drop-in replacement** for a self-hosted Wallabag instance. Deploy
+  on Cloudflare's free/paid tier with zero server management.
 - **Drop-in migration** — ability to import an existing Wallabag database.
 
 ## 2. Technology Stack
@@ -54,11 +58,12 @@
 
 - **Hourly cron**: token cleanup, orphan tag removal
 - **Daily cron (3 AM)**: refetch failed entries
-- **Weekly cron (Sunday midnight)**: cleanup orphaned images, re-apply tagging rules
+- **Weekly cron (Sunday midnight)**: cleanup orphaned images, re-apply tagging
+  rules
 
 ## 4. Project Structure
 
-```
+```text
 wallabag_cf_worker/
 ├── packages/
 │   ├── core/                        # Shared foundation
@@ -127,7 +132,8 @@ wallabag_cf_worker/
 
 ## 5. Build Pipeline
 
-Typia v13 uses a Go-based AST transformer invoked via `ttsc`. The build must compile TypeScript through `ttsc` before Wrangler bundles the output.
+Typia v13 uses a Go-based AST transformer invoked via `ttsc`. The build must
+compile TypeScript through `ttsc` before Wrangler bundles the output.
 
 ```jsonc
 // ttconfig.json
@@ -161,7 +167,8 @@ Typia v13 uses a Go-based AST transformer invoked via `ttsc`. The build must com
 }
 ```
 
-Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) → `dist-ttsc/` → Wrangler esbuild bundles → `dist/worker.js`.
+Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) →
+`dist-ttsc/` → Wrangler esbuild bundles → `dist/worker.js`.
 
 ## 6. Authentication — Full OAuth2
 
@@ -186,9 +193,11 @@ Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) → `dist-t
 
 ### 6.3 Token Format
 
-Opaque tokens (not JWT). Stored in D1 with expiration. This matches Wallabag's FOSOAuthServerBundle behavior.
+Opaque tokens (not JWT). Stored in D1 with expiration. This matches Wallabag's
+FOSOAuthServerBundle behavior.
 
 Response shape:
+
 ```json
 {
   "access_token": "ZGJmNTA2MDdmYTdmNWFiZjcxOWY3MWYyYzkyZDdlNWIzOTU4NWY3NTU1MDFjOTdhMTk2MGI3YjY1ZmI2NzM5MA",
@@ -201,15 +210,18 @@ Response shape:
 
 ### 6.4 Client ID Format
 
-`{id}_{randomId}` — e.g., `1_3o53gl30vhgk0c8ks4cocww08o84448osgo40wgw4gwkoo8skc`. Matches Wallabag's format exactly.
+`{id}_{randomId}` — e.g.,
+`1_3o53gl30vhgk0c8ks4cocww08o84448osgo40wgw4gwkoo8skc`. Matches Wallabag's
+format exactly.
 
 ### 6.5 Allowed Grant Types Per Client
 
-`token`, `authorization_code`, `password`, `refresh_token` — all enabled by default on client creation, matching Wallabag's behavior.
+`token`, `authorization_code`, `password`, `refresh_token` — all enabled by
+default on client creation, matching Wallabag's behavior.
 
 ## 7. Article Fetching & Parsing Pipeline
 
-```
+```text
 URL
  │
  ├─► fetch(URL) ─► HTML response
@@ -241,21 +253,26 @@ URL
 ### 7.1 HTMLRewriter Pre-Pass Rules
 
 **Always strip** (safe — Readability would discard anyway):
+
 - `<script>`, `<noscript>`, `<style>`, `<link rel="stylesheet">`
 - `<nav>`, `<footer>`, `<aside>` (non-content landmarks)
 - `<iframe>` (ads, social widgets — preserve video embeds)
-- Elements with classes/IDs matching: `ad-`, `adsense`, `sponsor`, `banner`, `social-`, `share-`, `popup`, `modal`, `cookie`, `newsletter`, `sidebar`
+- Elements with classes/IDs matching: `ad-`, `adsense`, `sponsor`, `banner`,
+  `social-`, `share-`, `popup`, `modal`, `cookie`, `newsletter`, `sidebar`
 
 **Always preserve** (Readability needs these):
+
 - `<article>`, `<main>`, `<div>`, `<p>`, `<h1>`-`<h6>`
 - `<blockquote>`, `<figure>`, `<img>`, `<video>`
 - `<ul>`, `<ol>`, `<li>`, `<a>`
 
-**Conservative by design** — when in doubt, leave it in and let Readability decide.
+**Conservative by design** — when in doubt, leave it in and let Readability
+decide.
 
 ### 7.2 Content Quality Threshold
 
 After Readability extraction, check:
+
 - `textContent` length > 200 characters
 - `title` is non-empty
 - If both pass → accept; otherwise → trigger Browser Run fallback
@@ -349,7 +366,8 @@ After Readability extraction, check:
 }
 ```
 
-The `_links` pagination URLs must preserve all filter query parameters (archive, starred, tags, since, domain_name, etc.).
+The `_links` pagination URLs must preserve all filter query parameters (archive,
+starred, tags, since, domain_name, etc.).
 
 ### 8.5 Tags
 
@@ -371,6 +389,7 @@ The `_links` pagination URLs must preserve all filter query parameters (archive,
 | `/api/annotations/{annotation}` | DELETE | Delete annotation |
 
 Annotation shape:
+
 ```json
 {
   "id": "abc123",
@@ -395,7 +414,8 @@ Annotation shape:
 |---|---|---|
 | `/api/search` | GET | Search entries by term |
 
-Query params: `term`, `page`, `perPage`. Searches across title, content, url, and annotation text. Returns same collection shape as `/api/entries`.
+Query params: `term`, `page`, `perPage`. Searches across title, content, url,
+and annotation text. Returns same collection shape as `/api/entries`.
 
 ### 8.9 Tagging Rules
 
@@ -403,13 +423,17 @@ Query params: `term`, `page`, `perPage`. Searches across title, content, url, an
 |---|---|---|
 | `/api/taggingrule/export` | GET | Export all tagging rules as JSON |
 
-Tagging rules use an expression language with these allowed variables and operators:
+Tagging rules use an expression language with these allowed variables and
+operators:
 
-**Variables**: `title`, `url`, `isArchived`, `isStarred`, `content`, `language`, `mimetype`, `readingTime`, `domainName`
+**Variables**: `title`, `url`, `isArchived`, `isStarred`, `content`, `language`,
+`mimetype`, `readingTime`, `domainName`
 
-**Operators**: `>`, `<`, `>=`, `<=`, `=`, `is`, `!=`, `and`, `not`, `or`, `matches`, `notmatches`
+**Operators**: `>`, `<`, `>=`, `<=`, `=`, `is`, `!=`, `and`, `not`, `or`,
+`matches`, `notmatches`
 
-Example rule: `domainName matches "*youtube*" and title notmatches "*music*"` → tags: `video,entertainment`
+Example rule: `domainName matches "*youtube*" and title notmatches "*music*"` →
+tags: `video,entertainment`
 
 Rules are evaluated automatically when new entries are saved.
 
@@ -432,7 +456,8 @@ Rules are evaluated automatically when new entries are saved.
 |---|---|---|
 | `/share/{uuid}` | GET | Public article view (no auth) |
 
-Returns server-rendered HTML with article title, content, OG meta tags, and link to original URL.
+Returns server-rendered HTML with article title, content, OG meta tags, and link
+to original URL.
 
 ## 9. Export Formats
 
@@ -448,9 +473,11 @@ Returns server-rendered HTML with article title, content, OG meta tags, and link
 
 ## 10. Import Sources
 
-Import is a web UI feature (file upload via HTMX form). Processing is enqueued to Cloudflare Queues.
+Import is a web UI feature (file upload via HTMX form). Processing is enqueued
+to Cloudflare Queues.
 
 Supported sources:
+
 - Wallabag v1, Wallabag v2 (JSON export)
 - Pocket (CSV/HTML export)
 - Instapaper (CSV export)
@@ -460,12 +487,15 @@ Supported sources:
 - Chrome bookmarks (HTML)
 - Delicious, Shaarli, Omnivore, Elcurator
 
-Import flow: Upload file → parse format → enqueue individual entries → Queue consumer: check for duplicates, fetch & parse, store.
+Import flow: Upload file → parse format → enqueue individual entries → Queue
+consumer: check for duplicates, fetch & parse, store.
 
 ## 11. Image Proxy
 
 When an entry has proxied images:
-1. Rewrite image URLs in stored HTML to point to `/api/entries/{id}/images/{hash}`
+
+1. Rewrite image URLs in stored HTML to point to
+   `/api/entries/{id}/images/{hash}`
 2. On request: check Cache API for cached image
 3. Cache miss: fetch original image, store in Cache API, serve
 4. Cache hit: serve directly from cache
@@ -477,6 +507,7 @@ No persistent storage — images persist in CDN cache until evicted by LRU.
 ### 12.1 Dual Index Strategy
 
 **Trigram index** — for substring matching (Wallabag `LIKE %term%` parity):
+
 ```sql
 CREATE VIRTUAL TABLE entries_fts_trigram USING fts5(
   title, content, url,
@@ -487,6 +518,7 @@ CREATE VIRTUAL TABLE entries_fts_trigram USING fts5(
 ```
 
 **Unicode61 index** — for word-level search with prefix matching:
+
 ```sql
 CREATE VIRTUAL TABLE entries_fts_words USING fts5(
   title, content, url,
@@ -505,11 +537,14 @@ CREATE VIRTUAL TABLE entries_fts_words USING fts5(
 
 ### 12.3 Sync
 
-Application-level sync: update FTS tables whenever entries are created, modified, or deleted. Wrapped in the same D1 batch/transaction as the entry mutation.
+Application-level sync: update FTS tables whenever entries are created,
+modified, or deleted. Wrapped in the same D1 batch/transaction as the entry
+mutation.
 
 ## 13. Database Schema (D1/SQLite)
 
-Optimized for SQLite, not mirroring Wallabag's MySQL schema. All tables include `user_id` for multi-user support.
+Optimized for SQLite, not mirroring Wallabag's MySQL schema. All tables include
+`user_id` for multi-user support.
 
 ### 13.1 Core Tables
 
@@ -690,7 +725,8 @@ CREATE VIRTUAL TABLE entries_fts_words USING fts5(
 
 ### 13.3 Timestamp Format
 
-All timestamps stored as ISO 8601 strings: `YYYY-MM-DDTHH:MM:SS+0000` (matching Wallabag's format).
+All timestamps stored as ISO 8601 strings: `YYYY-MM-DDTHH:MM:SS+0000` (matching
+Wallabag's format).
 
 ## 14. Environments
 
@@ -699,14 +735,16 @@ All timestamps stored as ISO 8601 strings: `YYYY-MM-DDTHH:MM:SS+0000` (matching 
 | `dev` | `wallabag-db-dev` | `*.workers.dev` subdomain | Staging/testing |
 | `production` | `wallabag-db-prod` | Custom domain | Live service |
 
-Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`.
+Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
+`ADMIN_PASSWORD_HASH`.
 
 ## 15. Testing Strategy
 
 ### 15.1 Unit Tests (Vitest)
 
 - Run against local D1 via `@cloudflare/vitest-pool-workers`
-- Test individual functions: parsing, tag rule evaluation, HTMLRewriter handlers, response shaping
+- Test individual functions: parsing, tag rule evaluation, HTMLRewriter
+  handlers, response shaping
 - Typia validators tested with edge-case inputs
 
 ### 15.2 Integration Tests (Vitest)
@@ -719,16 +757,20 @@ Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`, `ADMIN_PASSWORD_HAS
 ### 15.3 E2E Tests (Playwright)
 
 - Run against deployed dev environment
-- Simulate real client behavior: authenticate → save URL → list entries → read → archive → tag → search
+- Simulate real client behavior: authenticate → save URL → list entries → read →
+  archive → tag → search
 - Test web UI flows: login, OAuth client creation, settings
 
 ### 15.4 Compatibility Test Suite
 
 - Dedicated `tests/compat/` directory
-- Each test captures the exact JSON response shape Wallabag returns for every endpoint
+- Each test captures the exact JSON response shape Wallabag returns for every
+  endpoint
 - Validates field names, types, nullability, and nesting structure
-- Catches regressions like missing fields, wrong types, or changed response shapes
-- Reference responses captured from `app.wallabag.it/api` and Wallabag test fixtures
+- Catches regressions like missing fields, wrong types, or changed response
+  shapes
+- Reference responses captured from `app.wallabag.it/api` and Wallabag test
+  fixtures
 
 ## 16. Error Handling
 
@@ -743,11 +785,13 @@ All API errors return JSON matching Wallabag's format:
 }
 ```
 
-HTTP status codes: 400 (bad request), 401 (unauthorized), 403 (forbidden), 404 (not found), 405 (method not allowed), 500 (internal error).
+HTTP status codes: 400 (bad request), 401 (unauthorized), 403 (forbidden), 404
+(not found), 405 (method not allowed), 500 (internal error).
 
 ## 17. Response Headers
 
 All API responses include:
+
 - `Content-Type: application/json`
 - `Cache-Control: no-store, private`
 - `Pragma: no-cache`
@@ -760,12 +804,16 @@ This matches Wallabag's behavior.
 
 ## 19. Content-Type Negotiation
 
-Wallabag supports `.{_format}` suffix on API URLs (e.g., `/api/entries.json`, `/api/entries.xml`). All endpoints must handle both `Accept` header negotiation and URL suffix format hints, defaulting to JSON.
+Wallabag supports `.{_format}` suffix on API URLs (e.g., `/api/entries.json`,
+`/api/entries.xml`). All endpoints must handle both `Accept` header negotiation
+and URL suffix format hints, defaulting to JSON.
 
 ## 20. Rate Limiting & Abuse Prevention
 
 For personal use, explicit rate limiting is not critical. However:
-- Cloudflare Workers platform limits provide inherent protection (10K subrequests/day free tier)
+
+- Cloudflare Workers platform limits provide inherent protection (10K
+  subrequests/day free tier)
 - OAuth token expiration (1 hour) limits stolen token impact
 - D1 query limits prevent runaway queries
 - Optional: Cloudflare WAF rules for brute-force protection on `/oauth/v2/token`
