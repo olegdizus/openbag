@@ -19,6 +19,6 @@
   },
   "browser": { "binding": "BROWSER" },
   "triggers": {
-    "crons": ["0 * * * *", "0 3 * * *", "0 0 * * 0"]
+    "crons": ["0 * * * *", "0 3 * * *", "0 0 * * SUN"]
   }
 }

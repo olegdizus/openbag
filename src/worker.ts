@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { app as apiApp } from "@wallabag/api";
 import { webRoutes } from "@wallabag/web";
+import { runScheduledJob } from "@wallabag/core";
 import { createDispatcher } from "../packages/core/src/queue/consumers";
 import { handleEntryRefetch } from "../packages/core/src/queue/entry-refetch";
 
@@ -25,4 +26,12 @@ export default {
     return root.fetch(request, env, ctx);
   },
   queue: dispatcher,
+  scheduled: async (event: ScheduledEvent, env: any, _ctx: ExecutionContext) => {
+    try {
+      await runScheduledJob(env, event.cron);
+    } catch (err) {
+      console.error(`[scheduled] cron "${event.cron}" failed: ${(err as Error).message}`);
+      throw err;
+    }
+  },
 };

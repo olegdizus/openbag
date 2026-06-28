@@ -24,6 +24,9 @@
     ]
   },
   "browser": { "binding": "BROWSER" },
+  "triggers": {
+    "crons": ["0 * * * *", "0 3 * * *", "0 0 * * SUN"]
+  },
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,
