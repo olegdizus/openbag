@@ -32,13 +32,13 @@ importers:
 
   packages/api:
     dependencies:
-      '@wallabag/auth':
+      '@openbag/auth':
         specifier: file:../auth
         version: link:../auth
-      '@wallabag/core':
+      '@openbag/core':
         specifier: file:../core
         version: link:../core
-      '@wallabag/parser':
+      '@openbag/parser':
         specifier: file:../parser
         version: link:../parser
       hono:
@@ -47,7 +47,7 @@ importers:
 
   packages/auth:
     dependencies:
-      '@wallabag/core':
+      '@openbag/core':
         specifier: file:../core
         version: link:../core
       hono:
@@ -65,7 +65,7 @@ importers:
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
-      '@wallabag/core':
+      '@openbag/core':
         specifier: file:../core
         version: link:../core
       linkedom:
@@ -74,13 +74,13 @@ importers:
 
   packages/web:
     dependencies:
-      '@wallabag/auth':
+      '@openbag/auth':
         specifier: file:../auth
         version: link:../auth
-      '@wallabag/core':
+      '@openbag/core':
         specifier: file:../core
         version: link:../core
-      '@wallabag/parser':
+      '@openbag/parser':
         specifier: file:../parser
         version: link:../parser
       hono:

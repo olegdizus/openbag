@@ -4,7 +4,7 @@ import {
   createClient,
   listClients,
   deleteClient,
-} from "@wallabag/auth";
+} from "@openbag/auth";
 
 type ClientRow = {
   id: number;

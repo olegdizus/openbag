@@ -1,4 +1,4 @@
-import { D1Client } from "@wallabag/core";
+import { D1Client } from "@openbag/core";
 
 function randomToken(len = 64): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

@@ -1,13 +1,13 @@
 {
-  "name": "@wallabag/api",
+  "name": "@openbag/api",
   "version": "0.1.0",
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@wallabag/core": "file:../core",
-    "@wallabag/auth": "file:../auth",
-    "@wallabag/parser": "file:../parser",
+    "@openbag/core": "file:../core",
+    "@openbag/auth": "file:../auth",
+    "@openbag/parser": "file:../parser",
     "hono": "^4.7.0"
   }
 }

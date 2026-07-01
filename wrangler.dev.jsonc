@@ -1,5 +1,5 @@
 {
-  "name": "wallabag-dev",
+  "name": "openbag-dev",
   "main": "dist/worker.js",
   "compatibility_date": "2026-06-10",
   "vars": {
@@ -8,7 +8,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "wallabag-db-dev",
+      "database_name": "openbag-db-dev",
       "database_id": "REPLACE_WITH_DEV_DB_ID"
     }
   ],

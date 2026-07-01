@@ -6,8 +6,8 @@ import { entryWebRoutes } from "./features/entries";
 import { shareRoutes as webShareRoutes } from "./features/share";
 import { importRoutes as webImportRoutes } from "./features/import";
 import { layout, escapeHtml } from "./templates/layout";
-import { createUser, RegistrationDisabledError } from "@wallabag/auth";
-import { sessionMiddleware, D1Client, isRegistrationEnabled } from "@wallabag/core";
+import { createUser, RegistrationDisabledError } from "@openbag/auth";
+import { sessionMiddleware, D1Client, isRegistrationEnabled } from "@openbag/core";
 
 export function webRoutes() {
   const app = new Hono() as any;

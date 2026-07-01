@@ -1,21 +1,21 @@
 {
-  "name": "wallabag",
+  "name": "openbag",
   "main": "src/worker.ts",
   "compatibility_date": "2026-06-10",
   "vars": {
     "ALLOWED_REGISTRATION": "true"
   },
   "alias": {
-    "@wallabag/core": "./packages/core/src/index.ts",
-    "@wallabag/auth": "./packages/auth/src/index.ts",
-    "@wallabag/parser": "./packages/parser/src/index.ts",
-    "@wallabag/api": "./packages/api/src/index.ts",
-    "@wallabag/web": "./packages/web/src/index.ts"
+    "@openbag/core": "./packages/core/src/index.ts",
+    "@openbag/auth": "./packages/auth/src/index.ts",
+    "@openbag/parser": "./packages/parser/src/index.ts",
+    "@openbag/api": "./packages/api/src/index.ts",
+    "@openbag/web": "./packages/web/src/index.ts"
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "wallabag-db",
+      "database_name": "openbag-db",
       "database_id": "REDACTED-D1-ID",
       "migrations_dir": "./migrations"
     }

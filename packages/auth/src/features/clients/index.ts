@@ -1,4 +1,4 @@
-import { D1Client } from "@wallabag/core";
+import { D1Client } from "@openbag/core";
 
 export async function findClient(env: any, clientId: string, clientSecret: string) {
   const db = new D1Client(env.DB);

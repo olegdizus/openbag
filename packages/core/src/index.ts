@@ -1,4 +1,4 @@
-// @wallabag/core — shared foundation
+// @openbag/core — shared foundation
 export * from "./config";
 export * from "./cron";
 export * from "./db";

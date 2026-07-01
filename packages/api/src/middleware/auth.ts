@@ -1,4 +1,4 @@
-import { D1Client } from "@wallabag/core";
+import { D1Client } from "@openbag/core";
 
 export async function authMiddleware(c: any, next: any) {
   const authHeader = c.req.header("Authorization");

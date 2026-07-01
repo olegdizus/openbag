@@ -1,4 +1,4 @@
-// @wallabag/web — server-rendered HTML management UI
+// @openbag/web — server-rendered HTML management UI
 // All pages render fully without JS; app.js provides optional UX enhancements.
 export { sanitizeEntryHtml, computeReadingTime } from "./sanitize";
 export * from "./features/auth";

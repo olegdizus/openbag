@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { env } from "cloudflare:test";
-import { webRoutes } from "@wallabag/web";
-import { app as apiApp } from "@wallabag/api";
-import { D1Client } from "@wallabag/core";
+import { webRoutes } from "@openbag/web";
+import { app as apiApp } from "@openbag/api";
+import { D1Client } from "@openbag/core";
 
 // Real D1 binding from the test pool + an overridden registration flag.
 const regEnv = (allow: string) => ({ ...env, ALLOWED_REGISTRATION: allow });

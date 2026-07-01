@@ -1,16 +1,20 @@
-# Wallabag CF Worker
+# OpenBag
 
-A fully [Wallabag](https://www.wallabag.org/) v2 API-compatible read-it-later
+A [Wallabag](https://www.wallabag.org/) v2 API-compatible read-it-later
 service running entirely on **Cloudflare Workers + D1**.
 
 Every official and third-party Wallabag client — browser extensions, mobile
 apps, CLI tools — works without modification. Deploy on Cloudflare's free/paid
 tier with zero server management.
 
+> **Not affiliated with, sponsored by, or endorsed by wallabag or Nicolas
+> Lœuilet.** "Wallabag" is a trademark of its respective owners. OpenBag is an
+> independent, from-scratch reimplementation of the public Wallabag v2 API.
+
 ## Features
 
 - **1:1 API compatibility** with Wallabag v2 — drop-in replacement for
-  self-hosted instances
+  self-hosted instances (independent implementation, no shared code)
 - **OAuth2 server** with `password`, `authorization_code`, `refresh_token`, and
   `token` grant types
 - **Article parsing pipeline** — HTMLRewriter pre-pass → linkedom + Readability
@@ -45,7 +49,7 @@ tier with zero server management.
 ## Project Structure
 
 ```text
-wallabag_cf_worker/
+openbag/
 ├── packages/
 │   ├── core/         # Shared foundation — DB client, middleware, queue helpers, types
 │   ├── auth/         # OAuth2 server — clients, tokens, grants, users
@@ -80,7 +84,7 @@ npm install
 ### 2. Create a D1 database
 
 ```bash
-wrangler d1 create wallabag-db
+wrangler d1 create openbag-db
 ```
 
 Update the `database_id` in `wrangler.jsonc` with the ID from the output.
@@ -217,8 +221,8 @@ Configure your Wallabag client (mobile app, browser extension, etc.) with:
 
 | Environment | D1 Database | Purpose |
 |---|---|---|
-| `dev` | `wallabag-db-dev` | Staging/testing on `*.workers.dev` |
-| `production` | `wallabag-db-prod` | Live service on custom domain |
+| `dev` | `openbag-db-dev` | Staging/testing on `*.workers.dev` |
+| `production` | `openbag-db-prod` | Live service on custom domain |
 
 ## Architecture
 
@@ -249,4 +253,6 @@ Results are combined and ranked by BM25.
 
 ## License
 
-Private — All rights reserved.
+MIT — see [LICENSE](./LICENSE). OpenBag is an independent reimplementation;
+upstream [Wallabag](https://github.com/wallabag/wallabag) © 2013–present
+Nicolas Lœuilet is also MIT-licensed. See [NOTICE](./NOTICE) for details.

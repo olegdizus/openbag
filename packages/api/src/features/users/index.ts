@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getUserInfo } from "@wallabag/auth";
-import { D1Client } from "@wallabag/core";
+import { getUserInfo } from "@openbag/auth";
+import { D1Client } from "@openbag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 

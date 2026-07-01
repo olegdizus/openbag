@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeEntryHtml, computeReadingTime } from "@wallabag/web";
+import { sanitizeEntryHtml, computeReadingTime } from "@openbag/web";
 
 describe("sanitizeEntryHtml — banned elements", () => {
   it("strips <script> blocks entirely", () => {

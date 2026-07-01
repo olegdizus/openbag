@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { D1Client } from "@wallabag/core";
-import { fetchAndParse, generateEpub } from "@wallabag/parser";
+import { D1Client } from "@openbag/core";
+import { fetchAndParse, generateEpub } from "@openbag/parser";
 
 const db = (env: any) => new D1Client(env.DB);
 

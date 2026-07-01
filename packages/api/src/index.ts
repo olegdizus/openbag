@@ -8,8 +8,8 @@ import { taggingRuleRoutes } from "./features/tagging-rules";
 import { importRoutes } from "./features/import";
 import { userRoutes } from "./features/users";
 import { shareRoutes } from "./features/share";
-import { authRoutes } from "@wallabag/auth";
-import { corsMiddleware, loggingMiddleware, errorMiddleware, authMiddleware, isRegistrationEnabled } from "@wallabag/core";
+import { authRoutes } from "@openbag/auth";
+import { corsMiddleware, loggingMiddleware, errorMiddleware, authMiddleware, isRegistrationEnabled } from "@openbag/core";
 
 export const app = new Hono();
 
@@ -22,7 +22,7 @@ app.use("*", errorMiddleware());
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 app.get("/api/version", (c) => c.text("2.5.0"));
   app.get("/api/info", (c) => c.json({
-    appname: "Wallabag CF Worker",
+    appname: "OpenBag",
     version: "0.1.0",
     allowed_registration: isRegistrationEnabled(c.env),
   }));
@@ -45,7 +45,7 @@ api.route("/", userRoutes());
 // DELETE /api/tag/label — singular "tag" path, Wallabag compat
 api.delete("/tag/label", async (c: any) => {
   const user = c.get("user");
-  const { D1Client } = await import("@wallabag/core");
+  const { D1Client } = await import("@openbag/core");
   const d = new D1Client(c.env.DB);
   let label = c.req.query("tag") || "";
   if (!label) {

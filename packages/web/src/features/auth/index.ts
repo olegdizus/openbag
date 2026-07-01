@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { verifyPasswordAgainst } from "@wallabag/auth";
-import { isRegistrationEnabled } from "@wallabag/core";
+import { verifyPasswordAgainst } from "@openbag/auth";
+import { isRegistrationEnabled } from "@openbag/core";
 import { layout } from "../../templates/layout";
 
 export function loginRoutes() {

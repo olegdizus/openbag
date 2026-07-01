@@ -1,5 +1,5 @@
 {
-  "name": "wallabag-cf-worker",
+  "name": "openbag",
   "version": "0.1.0",
   "private": true,
   "scripts": {

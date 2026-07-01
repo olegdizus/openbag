@@ -1,4 +1,4 @@
-import { D1Client } from "@wallabag/core";
+import { D1Client } from "@openbag/core";
 
 async function verifyPassword(password: string, hashHex: string): Promise<boolean> {
   const encoder = new TextEncoder();

@@ -3,7 +3,7 @@
 import { D1Client } from "../db";
 import type { Env } from "../types/env";
 
-// Backwards-compatible alias; prefer `Env` from @wallabag/core for new code.
+// Backwards-compatible alias; prefer `Env` from @openbag/core for new code.
 export type Bindings = Env;
 
 export interface Variables {

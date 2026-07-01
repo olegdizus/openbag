@@ -1,4 +1,4 @@
-import { D1Client, isRegistrationEnabled } from "@wallabag/core";
+import { D1Client, isRegistrationEnabled } from "@openbag/core";
 import { hashPassword, verifyPassword } from "./password";
 
 export { hashPassword, verifyPassword };

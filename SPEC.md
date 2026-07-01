@@ -1,7 +1,10 @@
-# Wallabag CF Worker — Architectural Specification
+# OpenBag — Architectural Specification
 
 > A fully Wallabag v2 API-compatible read-it-later service running on Cloudflare
 > Workers + D1.
+>
+> Independent reimplementation. Not affiliated with, sponsored by, or endorsed
+> by wallabag or Nicolas Lœuilet.
 
 ## 1. Project Goals
 
@@ -34,12 +37,12 @@
 ```jsonc
 // wrangler.jsonc
 {
-  "name": "wallabag",
+  "name": "openbag",
   "main": "dist/worker.js",
   "compatibility_date": "2026-06-10",
   "assets": { "directory": "./packages/web/dist" },
   "d1_databases": [
-    { "binding": "DB", "database_name": "wallabag-db" }
+    { "binding": "DB", "database_name": "openbag-db" }
   ],
   "queues": {
     "producers": ["ENTRY_REFETCH", "TOKEN_CLEANUP", "IMPORT"],
@@ -64,7 +67,7 @@
 ## 4. Project Structure
 
 ```text
-wallabag_cf_worker/
+openbag/
 ├── packages/
 │   ├── core/                        # Shared foundation
 │   │   └── src/
@@ -735,8 +738,8 @@ Wallabag's format).
 
 | Environment | D1 Database | Domain | Purpose |
 |---|---|---|---|
-| `dev` | `wallabag-db-dev` | `*.workers.dev` subdomain | Staging/testing |
-| `production` | `wallabag-db-prod` | Custom domain | Live service |
+| `dev` | `openbag-db-dev` | `*.workers.dev` subdomain | Staging/testing |
+| `production` | `openbag-db-prod` | Custom domain | Live service |
 
 Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
 `ADMIN_PASSWORD_HASH`.

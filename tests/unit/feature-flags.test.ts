@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { isRegistrationEnabled } from "@wallabag/core";
-import type { Env } from "@wallabag/core";
+import { isRegistrationEnabled } from "@openbag/core";
+import type { Env } from "@openbag/core";
 
 const env = (v: string | undefined): Env =>
   ({ DB: {} as D1Database, ALLOWED_REGISTRATION: v }) as Env;

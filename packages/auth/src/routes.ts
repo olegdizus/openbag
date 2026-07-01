@@ -3,7 +3,7 @@ import { findClient } from "./features/clients";
 import { createAccessToken, createRefreshToken } from "./features/tokens";
 import { passwordGrant, refreshTokenGrant, exchangeAuthCode } from "./features/grants";
 import { findUserByUsername, createUser } from "./features/users";
-import { D1Client } from "@wallabag/core";
+import { D1Client } from "@openbag/core";
 
 function randomToken(bytes: number): string {
   const buf = new Uint8Array(bytes);

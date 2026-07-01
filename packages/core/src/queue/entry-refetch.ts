@@ -1,5 +1,5 @@
-import { fetchAndParse, type ParsedContent } from "@wallabag/parser";
-import { D1Client } from "@wallabag/core";
+import { fetchAndParse, type ParsedContent } from "@openbag/parser";
+import { D1Client } from "@openbag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 

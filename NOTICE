@@ -1,0 +1,14 @@
+OpenBag
+Copyright (c) 2026 OpenBag contributors
+
+This project is an independent, from-scratch reimplementation of the public
+Wallabag v2 API. It contains no source code from upstream Wallabag.
+
+Upstream Wallabag is licensed under the MIT License:
+  Copyright (c) 2013-present Nicolas Lœuilet
+  https://github.com/wallabag/wallabag  (see COPYING.md)
+
+"Wallabag" is a trademark of its respective owners. OpenBag is not affiliated
+with, sponsored by, or endorsed by wallabag or Nicolas Lœuilet.
+
+Licensed under the MIT License - see LICENSE for details.

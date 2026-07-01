@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env } from "cloudflare:test";
-import { webRoutes } from "@wallabag/web";
-import { D1Client } from "@wallabag/core";
+import { webRoutes } from "@openbag/web";
+import { D1Client } from "@openbag/core";
 
 const ctx = { waitUntil() {} } as unknown as ExecutionContext;
 const USER = "edittest";

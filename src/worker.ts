@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { app as apiApp } from "@wallabag/api";
-import { webRoutes } from "@wallabag/web";
-import { runScheduledJob } from "@wallabag/core";
+import { app as apiApp } from "@openbag/api";
+import { webRoutes } from "@openbag/web";
+import { runScheduledJob } from "@openbag/core";
 import { createDispatcher } from "../packages/core/src/queue/consumers";
 import { handleEntryRefetch } from "../packages/core/src/queue/entry-refetch";
 

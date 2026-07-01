@@ -15,11 +15,11 @@
     "outDir": "dist",
     "rootDir": ".",
     "paths": {
-      "@wallabag/core": ["packages/core/src"],
-      "@wallabag/auth": ["packages/auth/src"],
-      "@wallabag/parser": ["packages/parser/src"],
-      "@wallabag/api": ["packages/api/src"],
-      "@wallabag/web": ["packages/web/src"]
+      "@openbag/core": ["packages/core/src"],
+      "@openbag/auth": ["packages/auth/src"],
+      "@openbag/parser": ["packages/parser/src"],
+      "@openbag/api": ["packages/api/src"],
+      "@openbag/web": ["packages/web/src"]
     }
   },
   "include": [
