@@ -243,6 +243,12 @@ article.entry { line-height: 1.6; }
 article.entry h1 { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 article.entry img { max-width: 100%; height: auto; }
 
+.entry-fetching {
+  color: var(--color-muted);
+  font-style: italic;
+  padding: 24px 0;
+}
+
 .entry-tags { margin: 12px 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .tag {
   background: var(--color-border);

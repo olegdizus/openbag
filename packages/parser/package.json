@@ -5,6 +5,8 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@wallabag/core": "file:../core"
+    "@mozilla/readability": "^0.6.0",
+    "@wallabag/core": "file:../core",
+    "linkedom": "^0.18.12"
   }
 }

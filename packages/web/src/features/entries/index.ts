@@ -1,9 +1,39 @@
 import { Hono } from "hono";
 import { D1Client } from "@wallabag/core";
+import { fetchAndParse } from "@wallabag/parser";
 import { layout, escapeHtml } from "../../templates/layout";
 import { sanitizeEntryHtml, computeReadingTime } from "../../sanitize";
 
 const db = (env: any) => new D1Client(env.DB);
+
+async function fetchEntryContent(env: any, entryId: number): Promise<void> {
+  try {
+    const entry = await db(env).one<{ url: string; is_not_parsed: number }>(
+      "SELECT url, is_not_parsed FROM entries WHERE id = ?", [entryId]
+    );
+    if (!entry || !entry.is_not_parsed) return;
+
+    const parsed = await fetchAndParse(entry.url);
+    await db(env).run(
+      `UPDATE entries SET
+        title = COALESCE(NULLIF(title, ''), ?, title),
+        content = ?,
+        domain_name = COALESCE(NULLIF(domain_name, ''), ?, domain_name),
+        preview_picture = COALESCE(NULLIF(preview_picture, ''), ?, preview_picture),
+        language = COALESCE(NULLIF(language, ''), ?, language),
+        authors = COALESCE(NULLIF(authors, ''), ?, authors),
+        reading_time = CASE WHEN reading_time = 0 THEN ? ELSE reading_time END,
+        is_not_parsed = 0,
+        updated_at = datetime('now')
+      WHERE id = ?`,
+      [parsed.title, parsed.content, parsed.domainName, parsed.previewPicture, parsed.language, parsed.authors, parsed.readingTime, entryId]
+    );
+    console.log(`Fetched content for entry ${entryId}: ${parsed.title}`);
+  } catch (err) {
+    console.error(`Failed to fetch content for entry ${entryId}: ${(err as Error).message}`);
+    await db(env).run("UPDATE entries SET is_not_parsed = 0 WHERE id = ?", [entryId]).catch(() => {});
+  }
+}
 
 type Entry = {
   id: number;
@@ -14,6 +44,7 @@ type Entry = {
   created_at: string;
   is_archived: number;
   is_starred: number;
+  is_not_parsed: number;
 };
 
 function isXhr(c: any): boolean {
@@ -74,8 +105,9 @@ function renderActions(e: Entry): string {
 export function entryWebRoutes() {
   const app = new Hono();
 
-  function renderContentDiv(content: string, hasRaw: boolean): string {
-    return `<div id="entry-content" data-has-raw="${hasRaw ? "1" : "0"}">${content}</div>`;
+  function renderContentDiv(content: string, hasRaw: boolean, entryId?: number): string {
+    const dataId = entryId != null ? ` data-entry-id="${entryId}"` : "";
+    return `<div id="entry-content" data-has-raw="${hasRaw ? "1" : "0"}"${dataId}>${content}</div>`;
   }
 
 
@@ -163,6 +195,9 @@ ${rows}
       [user.id, url, urlHash, title || url, ""]
     );
     const id = result.lastRowId;
+    if (id) {
+      c.executionCtx.waitUntil(fetchEntryContent(c.env, id));
+    }
     return c.redirect(`/entries/${id}`, 302);
   });
 
@@ -184,14 +219,22 @@ ${rows}
     const contentSaved = c.req.query("content_saved") === "1";
     const contentAlert = contentSaved ? `          <div class="alert alert-success" role="status">Content updated.</div>\n` : "";
     const hasRaw = entry.content_raw != null;
-    const fallback = "<p>No content yet. Content will be fetched when the parser pipeline is installed.</p>";
+    const isFetching = !entry.content;
+    const fallback = '<p class="entry-fetching">Fetching content…</p>';
     const contentHtml = entry.content || fallback;
     const canEdit = !!entry.content;
+    const scripts: string[] = [];
+    if (isFetching) scripts.push("/entry-poll.js");
+    if (canEdit) scripts.push("/editor.js");
+
+    if (isFetching && entry.is_not_parsed) {
+      c.executionCtx.waitUntil(fetchEntryContent(c.env, id));
+    }
 
     return c.html(layout({
       title: entry.title || `Entry ${id}`,
       user,
-      scripts: canEdit ? ["/editor.js"] : undefined,
+      scripts: scripts.length > 0 ? scripts : undefined,
       body: `      <article class="entry">
         <header>
           <h1>${escapeHtml(entry.title)}
@@ -213,9 +256,20 @@ ${titleAlert}${contentAlert}        ${renderActions(entry)}
           ${tags.map(t => `<span class="tag">${escapeHtml(t.label)}</span>`).join("")}
         </div>
         ${canEdit ? `        <div class="entry-edit-bar"><button type="button" id="entry-edit-btn" class="btn-edit" aria-label="Edit article content">✎ Edit content</button></div>\n` : ""}
-        ${renderContentDiv(contentHtml, hasRaw)}
+        ${renderContentDiv(contentHtml, hasRaw, isFetching ? id : undefined)}
       </article>`,
     }));
+  });
+
+  app.get("/:id/status", async (c) => {
+    const user = c.get("user") as { id: number; username: string };
+    const id = parseInt(c.req.param("id"));
+    const row = await db(c.env).one<{ is_not_parsed: number; content: string | null }>(
+      "SELECT is_not_parsed, content FROM entries WHERE id = ? AND user_id = ?", [id, user.id]
+    ).catch(() => null);
+    if (!row) return c.json({ ready: false }, 404);
+    const ready = row.is_not_parsed === 0 && !!row.content;
+    return c.json({ ready });
   });
 
   app.post("/:id/archive", async (c) => {
