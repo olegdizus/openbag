@@ -1,5 +1,6 @@
 # OpenBag — Architectural Specification
 
+
 A fully Wallabag v2 API-compatible read-it-later service running on Cloudflare Workers + D1.
 
 Independent reimplementation. Not affiliated with, sponsored by, or endorsed by wallabag or Nicolas Lœuilet.
@@ -15,20 +16,20 @@ Independent reimplementation. Not affiliated with, sponsored by, or endorsed by 
 
 ## 2. Technology Stack
 
-Layer | Technology
------ | ----------
-Runtime | Cloudflare Workers
-Database | Cloudflare D1 (SQLite)
-Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers)
-API framework | Hono
-Validation | Typia v13 (compile-time AST transforms)
-Build pipeline | ttsc → Wrangler (esbuild)
-Frontend UI | Native semantic HTML + server-rendered, progressive-enhancement JS
-Headless browser | Cloudflare Browser Run
-Background jobs | Cloudflare Cron Triggers + Queues
-Image proxy | Cloudflare Cache API
-Testing | Vitest + Playwright + compatibility test suite
-Language | TypeScript (strict)
+| Layer | Technology |
+| ----- | ---------- |
+| Runtime | Cloudflare Workers |
+| Database | Cloudflare D1 (SQLite) |
+| Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers) |
+| API framework | Hono |
+| Validation | Typia v13 (compile-time AST transforms) |
+| Build pipeline | ttsc → Wrangler (esbuild) |
+| Frontend UI | Native semantic HTML + server-rendered, progressive-enhancement JS |
+| Headless browser | Cloudflare Browser Run |
+| Background jobs | Cloudflare Cron Triggers + Queues |
+| Image proxy | Cloudflare Cache API |
+| Testing | Vitest + Playwright + compatibility test suite |
+| Language | TypeScript (strict) |
 
 
 ## 3. Cloudflare Bindings
@@ -110,23 +111,23 @@ Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) → `dist-t
 
 ### 6.1 Supported Grant Types
 
-Grant Type | Flow | Use Case
----------- | ---- | --------
-`password` | Client sends username+password → token | Wallabag mobile apps, CLI tools
-`authorization_code` | Browser redirect flow | Third-party web apps
-`refresh_token` | Exchange refresh token → new access token | All clients for token renewal
-`token` | Implicit grant (legacy) | Old browser-based clients
+| Grant Type | Flow | Use Case |
+| ---------- | ---- | -------- |
+| `password` | Client sends username+password → token | Wallabag mobile apps, CLI tools |
+| `authorization_code` | Browser redirect flow | Third-party web apps |
+| `refresh_token` | Exchange refresh token → new access token | All clients for token renewal |
+| `token` | Implicit grant (legacy) | Old browser-based clients |
 
 
 ### 6.2 Endpoints
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/oauth/v2/token` | POST | Issue/refresh tokens
-`/oauth/v2/auth` | GET | Authorization page (auth code flow)
-`/developer` | GET | List OAuth clients (web UI)
-`/developer/client/create` | GET/POST | Create OAuth client (web UI)
-`/developer/client/delete/{id}` | POST | Delete OAuth client (web UI)
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/oauth/v2/token` | POST | Issue/refresh tokens |
+| `/oauth/v2/auth` | GET | Authorization page (auth code flow) |
+| `/developer` | GET | List OAuth clients (web UI) |
+| `/developer/client/create` | GET/POST | Create OAuth client (web UI) |
+| `/developer/client/delete/{id}` | POST | Delete OAuth client (web UI) |
 
 
 ### 6.3 Token Format
@@ -226,40 +227,40 @@ After Readability extraction, check:
 
 ### 8.1 Entries
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/entries` | GET | List entries (filtered, sorted, paginated)
-`/api/entries` | POST | Create entry (fetch & parse URL)
-`/api/entries/{entry}` | GET | Get single entry
-`/api/entries/{entry}` | DELETE | Delete entry
-`/api/entries/{entry}` | PATCH | Update entry properties
-`/api/entries/{entry}/export` | GET | Export entry in format
-`/api/entries/{entry}/reload` | GET | Re-fetch & re-parse entry
-`/api/entries/{entry}/tags` | POST | Add tags to entry
-`/api/entries/{entry}/tags/{tag}` | DELETE | Remove tag from entry
-`/api/entries/exists` | GET | Check if entry exists by URL
-`/api/entries/list` | GET | Deprecated list endpoint
-`/api/entries/lists` | GET | Deprecated lists endpoint
-`/api/entries/tags/list` | GET | Tags for entries list
-`/api/entries/tags/lists` | GET | Tags for entries lists
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/entries` | GET | List entries (filtered, sorted, paginated) |
+| `/api/entries` | POST | Create entry (fetch & parse URL) |
+| `/api/entries/{entry}` | GET | Get single entry |
+| `/api/entries/{entry}` | DELETE | Delete entry |
+| `/api/entries/{entry}` | PATCH | Update entry properties |
+| `/api/entries/{entry}/export` | GET | Export entry in format |
+| `/api/entries/{entry}/reload` | GET | Re-fetch & re-parse entry |
+| `/api/entries/{entry}/tags` | POST | Add tags to entry |
+| `/api/entries/{entry}/tags/{tag}` | DELETE | Remove tag from entry |
+| `/api/entries/exists` | GET | Check if entry exists by URL |
+| `/api/entries/list` | GET | Deprecated list endpoint |
+| `/api/entries/lists` | GET | Deprecated lists endpoint |
+| `/api/entries/tags/list` | GET | Tags for entries list |
+| `/api/entries/tags/lists` | GET | Tags for entries lists |
 
 
 ### 8.2 Entry List Query Parameters
 
-Param | Type | Default | Description
------ | ---- | ------- | -----------
-`archive` | integer (0,1) | 0 | Filter by archived status
-`starred` | integer (0,1) | 0 | Filter by starred status
-`sort` | string | `created` | Sort field: `created`, `updated`, `archived`
-`order` | string | `desc` | Sort order: `asc`, `desc`
-`page` | integer | 1 | Page number
-`perPage` | integer | 30 | Results per page
-`tags` | string | — | Comma-separated tags (AND match)
-`since` | integer | 0 | Timestamp for updated entries
-`public` | integer (0,1) | 0 | Filter by public link
-`detail` | string | `full` | `full` (include content) or `metadata`
-`domain_name` | string | — | Filter by domain
-`annotations` | integer (0,1) | — | Filter by annotation presence
+| Param | Type | Default | Description |
+| ----- | ---- | ------- | ----------- |
+| `archive` | integer (0,1) | 0 | Filter by archived status |
+| `starred` | integer (0,1) | 0 | Filter by starred status |
+| `sort` | string | `created` | Sort field: `created`, `updated`, `archived` |
+| `order` | string | `desc` | Sort order: `asc`, `desc` |
+| `page` | integer | 1 | Page number |
+| `perPage` | integer | 30 | Results per page |
+| `tags` | string | — | Comma-separated tags (AND match) |
+| `since` | integer | 0 | Timestamp for updated entries |
+| `public` | integer (0,1) | 0 | Filter by public link |
+| `detail` | string | `full` | `full` (include content) or `metadata` |
+| `domain_name` | string | — | Filter by domain |
+| `annotations` | integer (0,1) | — | Filter by annotation presence |
 
 
 ### 8.3 Entry Response Shape
@@ -320,23 +321,23 @@ starred, tags, since, domain_name, etc.).
 
 ### 8.5 Tags
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/tags` | GET | List all tags
-`/api/tags` | DELETE | Delete a tag (by query param)
-`/api/tags/{tag}` | DELETE | Delete tag by ID
-`/api/tag/label` | GET | Get tag by label
-`/api/tags/label` | GET | Get tags by labels
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/tags` | GET | List all tags |
+| `/api/tags` | DELETE | Delete a tag (by query param) |
+| `/api/tags/{tag}` | DELETE | Delete tag by ID |
+| `/api/tag/label` | GET | Get tag by label |
+| `/api/tags/label` | GET | Get tags by labels |
 
 
 ### 8.6 Annotations
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/annotations/{entry}` | GET | List annotations for entry
-`/api/annotations/{entry}` | POST | Create annotation
-`/api/annotations/{annotation}` | PUT | Update annotation
-`/api/annotations/{annotation}` | DELETE | Delete annotation
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/annotations/{entry}` | GET | List annotations for entry |
+| `/api/annotations/{entry}` | POST | Create annotation |
+| `/api/annotations/{annotation}` | PUT | Update annotation |
+| `/api/annotations/{annotation}` | DELETE | Delete annotation |
 
 Annotation shape:
 
@@ -354,17 +355,17 @@ Annotation shape:
 
 ### 8.7 Config
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/config` | GET | Get user configuration
-`/api/config` | PUT/PATCH | Update user configuration
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/config` | GET | Get user configuration |
+| `/api/config` | PUT/PATCH | Update user configuration |
 
 
 ### 8.8 Search
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/search` | GET | Search entries by term
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/search` | GET | Search entries by term |
 
 Query params: `term`, `page`, `perPage`. Searches across title, content, url,
 and annotation text. Returns same collection shape as `/api/entries`.
@@ -372,9 +373,9 @@ and annotation text. Returns same collection shape as `/api/entries`.
 
 ### 8.9 Tagging Rules
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/taggingrule/export` | GET | Export all tagging rules as JSON
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/taggingrule/export` | GET | Export all tagging rules as JSON |
 
 Tagging rules use an expression language with these allowed variables and
 operators:
@@ -393,24 +394,24 @@ Rules are evaluated automatically when new entries are saved.
 
 ### 8.10 Users
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/user` | GET | Get current user info
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/user` | GET | Get current user info |
 
 
 ### 8.11 Other
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/info` | GET | Instance info
-`/api/version` | GET | API version (returns `"2.x"`)
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/info` | GET | Instance info |
+| `/api/version` | GET | API version (returns `"2.x"`) |
 
 
 ### 8.12 Public Share
 
-Route | Method | Description
------ | ------ | -----------
-`/share/{uuid}` | GET | Public article view (no auth)
+| Route | Method | Description |
+| ----- | ------ | ----------- |
+| `/share/{uuid}` | GET | Public article view (no auth) |
 
 Returns server-rendered HTML with article title, content, OG meta tags, and link
 to original URL.
@@ -423,13 +424,13 @@ reader (Reeder, Feedly, Miniflux, NetNewsWire, etc.). Because feed readers can't
 send an OAuth2 Bearer header, authentication uses a per-user long-lived
 **feed token** appended as `?token=` to the URL.
 
-Route | Method | Auth | Description
------ | ------ | ---- | -----------
-`/api/feed/token` | POST | Bearer | Generate (or rotate) the feed token
-`/api/feed/token` | DELETE | Bearer | Revoke the feed token
-`/api/feed` | GET | Bearer | Atom feed of the current user (API explorer convenience)
-`/api/feeds/{username}.atom` | GET | `?token=` | Atom 1.0 feed of recent entries (public URL for feed readers)
-`/api/feeds/{username}.xml` | GET | `?token=` | RSS 2.0 feed of recent entries (public URL for feed readers)
+| Route | Method | Auth | Description |
+| ----- | ------ | ---- | ----------- |
+| `/api/feed/token` | POST | Bearer | Generate (or rotate) the feed token |
+| `/api/feed/token` | DELETE | Bearer | Revoke the feed token |
+| `/api/feed` | GET | Bearer | Atom feed of the current user (API explorer convenience) |
+| `/api/feeds/{username}.atom` | GET | `?token=` | Atom 1.0 feed of recent entries (public URL for feed readers) |
+| `/api/feeds/{username}.xml` | GET | `?token=` | RSS 2.0 feed of recent entries (public URL for feed readers) |
 
 **Token model**: 32-byte CSPRNG hex (256 bits), stored in `users.feed_token`.
 Lookup is exact-match. Users mint/rotate via `POST /api/feed/token`; the
@@ -453,15 +454,15 @@ injection from saved article metadata.
 
 ## 9. Export Formats
 
-Format | Implementation
------- | --------------
-`txt` | In-Worker: strip HTML tags, plain text
-`csv` | In-Worker: serialize fields to CSV
-`json` | In-Worker: JSON serialize entry
-`xml` | In-Worker: XML serialize entry
-`markdown` | In-Worker: HTML → Markdown conversion
-`pdf` | Browser Run: `env.BROWSER.quickAction("pdf", { url })`
-`epub` | In-Worker: `epub-gen-memory` library (in-memory ZIP)
+| Format | Implementation |
+| ------ | -------------- |
+| `txt` | In-Worker: strip HTML tags, plain text |
+| `csv` | In-Worker: serialize fields to CSV |
+| `json` | In-Worker: JSON serialize entry |
+| `xml` | In-Worker: XML serialize entry |
+| `markdown` | In-Worker: HTML → Markdown conversion |
+| `pdf` | Browser Run: `env.BROWSER.quickAction("pdf", { url })` |
+| `epub` | In-Worker: `epub-gen-memory` library (in-memory ZIP) |
 
 
 ## 10. Import Sources
@@ -733,10 +734,10 @@ Wallabag's format).
 
 ## 14. Environments
 
-Environment | D1 Database | Domain | Purpose
------------ | ----------- | ------ | -------
-`dev` | `openbag-db-dev` | `*.workers.dev` subdomain | Staging/testing
-`production` | `openbag-db-prod` | Custom domain | Live service
+| Environment | D1 Database | Domain | Purpose |
+| ----------- | ----------- | ------ | ------- |
+| `dev` | `openbag-db-dev` | `*.workers.dev` subdomain | Staging/testing |
+| `production` | `openbag-db-prod` | Custom domain | Live service |
 
 Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
 `ADMIN_PASSWORD_HASH`.

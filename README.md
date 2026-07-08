@@ -1,5 +1,6 @@
 # OpenBag
 
+
 A [Wallabag] v2 API-compatible read-it-later service running entirely on Cloudflare Workers + D1.
 
 Every official and third-party Wallabag client — browser extensions, mobile apps, CLI tools — works without modification. Deploy on Cloudflare's free/paid tier with zero server management.
@@ -153,83 +154,83 @@ npm run create-user -- --username alice --password 's3cret!' --email alice@examp
 
 ### Authentication (OAuth2)
 
-Endpoint | Description
--------- | -----------
-`/oauth/v2/token` | Issue/refresh tokens
-`/oauth/v2/auth` | Authorization page (auth code flow)
+| Endpoint | Description |
+| -------- | ----------- |
+| `/oauth/v2/token` | Issue/refresh tokens |
+| `/oauth/v2/auth` | Authorization page (auth code flow) |
 
 
 ### Entries
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/entries` | GET | List entries (filtered, sorted, paginated)
-`/api/entries` | POST | Save a new URL (fetch & parse)
-`/api/entries/{id}` | GET | Get single entry
-`/api/entries/{id}` | DELETE | Delete entry
-`/api/entries/{id}` | PATCH | Update entry (archive, star, etc.)
-`/api/entries/{id}/export` | GET | Export entry (txt, csv, json, xml, md, pdf, epub)
-`/api/entries/{id}/reload` | GET | Re-fetch & re-parse entry
-`/api/entries/exists` | GET | Check if URL is already saved
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/entries` | GET | List entries (filtered, sorted, paginated) |
+| `/api/entries` | POST | Save a new URL (fetch & parse) |
+| `/api/entries/{id}` | GET | Get single entry |
+| `/api/entries/{id}` | DELETE | Delete entry |
+| `/api/entries/{id}` | PATCH | Update entry (archive, star, etc.) |
+| `/api/entries/{id}/export` | GET | Export entry (txt, csv, json, xml, md, pdf, epub) |
+| `/api/entries/{id}/reload` | GET | Re-fetch & re-parse entry |
+| `/api/entries/exists` | GET | Check if URL is already saved |
 
 
 ### Tags
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/tags` | GET | List all tags
-`/api/tags` | DELETE | Delete tag by query param
-`/api/tags/{id}` | DELETE | Delete tag by ID
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/tags` | GET | List all tags |
+| `/api/tags` | DELETE | Delete tag by query param |
+| `/api/tags/{id}` | DELETE | Delete tag by ID |
 
 
 ### Other
 
-Endpoint | Method | Description
--------- | ------ | -----------
-`/api/annotations/{entry}` | GET/POST | List/create annotations
-`/api/search` | GET | Full-text search
-`/api/config` | GET/PUT | User configuration
-`/api/user` | GET | Current user info
-`/api/info` | GET | Instance info
-`/api/version` | GET | API version
-`/share/{uuid}` | GET | Public article view
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/api/annotations/{entry}` | GET/POST | List/create annotations |
+| `/api/search` | GET | Full-text search |
+| `/api/config` | GET/PUT | User configuration |
+| `/api/user` | GET | Current user info |
+| `/api/info` | GET | Instance info |
+| `/api/version` | GET | API version |
+| `/share/{uuid}` | GET | Public article view |
 
 
 ## Connecting Wallabag Clients
 
 Configure your Wallabag client (mobile app, browser extension, etc.) with:
 
-Setting | Value
-------- | -----
-Server URL | `https://your-worker.workers.dev`
-Client ID | Created via the developer UI at `/developer`
-Client Secret | Shown on client creation
-Username | Your username
-Password | Your password
+| Setting | Value |
+| ------- | ----- |
+| Server URL | `https://your-worker.workers.dev` |
+| Client ID | Created via the developer UI at `/developer` |
+| Client Secret | Shown on client creation |
+| Username | Your username |
+| Password | Your password |
 
 
 ## Scripts
 
-Command | Description
-------- | -----------
-`npm run dev` | Start local development server
-`npm run build` | Type-check and build
-`npm run deploy` | Deploy to production
-`npm run deploy:dev` | Deploy to dev environment
-`npm run test` | Run unit & integration tests
-`npm run test:e2e` | Run Playwright E2E tests
-`npm run typecheck` | Type-check without building
-`npm run db:migrate` | Apply migrations (production)
-`npm run db:migrate:local` | Apply migrations (local)
-`npm run create-user` | Provision a user out-of-band (bypasses registration flag)
+| Command | Description |
+| ------- | ----------- |
+| `npm run dev` | Start local development server |
+| `npm run build` | Type-check and build |
+| `npm run deploy` | Deploy to production |
+| `npm run deploy:dev` | Deploy to dev environment |
+| `npm run test` | Run unit & integration tests |
+| `npm run test:e2e` | Run Playwright E2E tests |
+| `npm run typecheck` | Type-check without building |
+| `npm run db:migrate` | Apply migrations (production) |
+| `npm run db:migrate:local` | Apply migrations (local) |
+| `npm run create-user` | Provision a user out-of-band (bypasses registration flag) |
 
 
 ## Environments
 
-Environment | D1 Database | Purpose
------------ | ----------- | -------
-`dev` | `openbag-db-dev` | Staging/testing on `*.workers.dev`
-`production` | `openbag-db-prod` | Live service on custom domain
+| Environment | D1 Database | Purpose |
+| ----------- | ----------- | ------- |
+| `dev` | `openbag-db-dev` | Staging/testing on `*.workers.dev` |
+| `production` | `openbag-db-prod` | Live service on custom domain |
 
 
 ## Architecture
@@ -246,11 +247,11 @@ URL → fetch → HTMLRewriter (strip noise) → linkedom + Readability → Stor
 
 ### Background Jobs
 
-Schedule | Job
--------- | ---
-Hourly | Token cleanup, orphan tag removal
-Daily (3 AM) | Refetch failed entries
-Weekly (Sunday) | Cleanup orphaned images, re-apply tagging rules
+| Schedule | Job |
+| -------- | --- |
+| Hourly | Token cleanup, orphan tag removal |
+| Daily (3 AM) | Refetch failed entries |
+| Weekly (Sunday) | Cleanup orphaned images, re-apply tagging rules |
 
 
 ### Search

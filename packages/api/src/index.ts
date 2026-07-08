@@ -22,11 +22,11 @@ app.use("*", errorMiddleware());
 // Public routes (no auth required)
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 app.get("/api/version", (c) => c.text("2.5.0"));
-  app.get("/api/info", (c) => c.json({
-    appname: "OpenBag",
-    version: "0.1.0",
-    allowed_registration: isRegistrationEnabled(c.env),
-  }));
+app.get("/api/info", (c) => c.json({
+  appname: "OpenBag",
+  version: "0.1.0",
+  allowed_registration: isRegistrationEnabled(c.env),
+}));
 
 // Mount auth routes (OAuth2)
 app.route("/", authRoutes());

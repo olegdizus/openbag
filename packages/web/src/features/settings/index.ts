@@ -33,9 +33,9 @@ export function settingsRoutes() {
     // Inject the flash right after the section's <h2>, if present.
     const feedsBlock = feedsBanner
       ? feedsSection.replace(
-          '        <h2>RSS / Atom Feeds</h2>',
-          `        <h2>RSS / Atom Feeds</h2>\n${feedsBanner}`,
-        )
+        '        <h2>RSS / Atom Feeds</h2>',
+        `        <h2>RSS / Atom Feeds</h2>\n${feedsBanner}`,
+      )
       : feedsSection;
 
     return c.html(layout({
