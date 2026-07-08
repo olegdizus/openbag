@@ -1,4 +1,4 @@
-import { fetchAndParse, type ParsedContent } from "@openbag/parser";
+import { fetchAndParse } from "@openbag/parser";
 import { D1Client } from "@openbag/core";
 
 const db = (env: any) => new D1Client(env.DB);

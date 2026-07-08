@@ -1,2 +1,2 @@
-// TODO Phase 2 — queue producer/consumer helpers
+export { handleEntryRefetch, refetchEntry } from "./entry-refetch";
 export * from "./producers";

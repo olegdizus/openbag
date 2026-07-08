@@ -3,15 +3,8 @@ import { hashPassword, verifyPassword } from "./password";
 
 export { hashPassword, verifyPassword };
 
-export class RegistrationDisabledError extends Error {
-  constructor() {
-    super("Account registration is disabled on this instance.");
-    this.name = "RegistrationDisabledError";
-  }
-}
-
 export async function createUser(env: any, username: string, password: string, email?: string) {
-  if (!isRegistrationEnabled(env)) throw new RegistrationDisabledError();
+  if (!isRegistrationEnabled(env)) throw new Error("REGISTRATION_DISABLED");
   const db = new D1Client(env.DB);
   const passwordHash = await hashPassword(password);
   const result = await db.run(

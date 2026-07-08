@@ -1,19 +1,12 @@
 import { Hono } from "hono";
 import { app as apiApp } from "@openbag/api";
 import { webRoutes } from "@openbag/web";
-import { runScheduledJob } from "@openbag/core";
-import { createDispatcher } from "../packages/core/src/queue/consumers";
-import { handleEntryRefetch } from "../packages/core/src/queue/entry-refetch";
+import { runScheduledJob, handleEntryRefetch } from "@openbag/core";
 
 const root = new Hono();
 
 root.route("/", apiApp);
 root.route("/", webRoutes());
-
-// Queue handler — dispatches by message body.type
-const dispatcher = createDispatcher({
-  ENTRY_REFETCH: handleEntryRefetch,
-});
 
 export default {
   fetch: async (request: Request, env: any, ctx: any) => {
@@ -25,7 +18,15 @@ export default {
     }
     return root.fetch(request, env, ctx);
   },
-  queue: dispatcher,
+  queue: async (batch: { body: { type: string } }[], env: any) => {
+    for (const msg of batch) {
+      if (msg.body.type === "ENTRY_REFETCH") {
+        await handleEntryRefetch([msg as any], env);
+      } else {
+        console.log(`No handler for queue message type: ${msg.body.type}`);
+      }
+    }
+  },
   scheduled: async (event: ScheduledEvent, env: any, _ctx: ExecutionContext) => {
     try {
       await runScheduledJob(env, event.cron);

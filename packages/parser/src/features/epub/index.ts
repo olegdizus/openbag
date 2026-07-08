@@ -279,14 +279,7 @@ function cleanContentForEpub(html: string): string {
   clean = clean.replace(/\s+data-[a-z][-a-z0-9]*(?:="[^"]*")?/gi, "");
 
   // Remove other common XHTML-incompatible attributes
-  clean = clean.replace(/\s+aria-[a-z-]+(?:="[^"]*")?/gi, "");
-  clean = clean.replace(/\s+role="[^"]*"/gi, "");
-  clean = clean.replace(/\s+tabindex="[^"]*"/gi, "");
-  clean = clean.replace(/\s+loading="[^"]*"/gi, "");
-  clean = clean.replace(/\s+decoding="[^"]*"/gi, "");
-  clean = clean.replace(/\s+fetchpriority="[^"]*"/gi, "");
-  clean = clean.replace(/\s+crossorigin(?:="[^"]*")?/gi, "");
-  clean = clean.replace(/\s+integrity="[^"]*"/gi, "");
+  clean = clean.replace(/\s+(?:aria-[a-z-]+|role|tabindex|loading|decoding|fetchpriority|crossorigin|integrity)(?:="[^"]*")?/gi, "");
 
   // Fix void elements for XHTML compatibility
   clean = clean.replace(/<br>/gi, "<br/>");

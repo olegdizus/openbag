@@ -1,7 +1,5 @@
 // Error handling middleware
 
-import { Hono } from "hono";
-
 export function errorMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     try {

@@ -1,41 +1,41 @@
 # OpenBag — Architectural Specification
 
-> A fully Wallabag v2 API-compatible read-it-later service running on Cloudflare
-> Workers + D1.
->
-> Independent reimplementation. Not affiliated with, sponsored by, or endorsed
-> by wallabag or Nicolas Lœuilet.
+A fully Wallabag v2 API-compatible read-it-later service running on Cloudflare Workers + D1.
+
+Independent reimplementation. Not affiliated with, sponsored by, or endorsed by wallabag or Nicolas Lœuilet.
+
 
 ## 1. Project Goals
 
-- **1:1 API compatibility** with Wallabag v2 — every official and third-party
-  client (browser extensions, mobile apps, CLI tools) must work without
-  modification.
-- **Personal drop-in replacement** for a self-hosted Wallabag instance. Deploy
-  on Cloudflare's free/paid tier with zero server management.
+- **1:1 API compatibility** with Wallabag v2 — every official and third-party client (browser extensions, mobile apps, CLI tools) must work without modification.
+- **Personal drop-in replacement** for a self-hosted Wallabag instance.
+  Deploy on Cloudflare's free/paid tier with zero server management.
 - **Drop-in migration** — ability to import an existing Wallabag database.
+
 
 ## 2. Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Runtime | Cloudflare Workers |
-| Database | Cloudflare D1 (SQLite) |
-| Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers) |
-| API framework | Hono |
-| Validation | Typia v13 (compile-time AST transforms) |
-| Build pipeline | ttsc → Wrangler (esbuild) |
-| Frontend UI | Native semantic HTML + server-rendered, progressive-enhancement JS |
-| Headless browser | Cloudflare Browser Run |
-| Background jobs | Cloudflare Cron Triggers + Queues |
-| Image proxy | Cloudflare Cache API |
-| Testing | Vitest + Playwright + compatibility test suite |
-| Language | TypeScript (strict) |
+Layer | Technology
+----- | ----------
+Runtime | Cloudflare Workers
+Database | Cloudflare D1 (SQLite)
+Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers)
+API framework | Hono
+Validation | Typia v13 (compile-time AST transforms)
+Build pipeline | ttsc → Wrangler (esbuild)
+Frontend UI | Native semantic HTML + server-rendered, progressive-enhancement JS
+Headless browser | Cloudflare Browser Run
+Background jobs | Cloudflare Cron Triggers + Queues
+Image proxy | Cloudflare Cache API
+Testing | Vitest + Playwright + compatibility test suite
+Language | TypeScript (strict)
+
 
 ## 3. Cloudflare Bindings
 
-```jsonc
-// wrangler.jsonc
+`wrangler.jsonc`:
+
+```json
 {
   "name": "openbag",
   "main": "dist/worker.js",
@@ -64,85 +64,14 @@
 - **Weekly cron (Sunday midnight)**: cleanup orphaned images, re-apply tagging
   rules
 
-## 4. Project Structure
-
-```text
-openbag/
-├── packages/
-│   ├── core/                        # Shared foundation
-│   │   └── src/
-│   │       ├── db/                  # D1 client, query helpers, schema types
-│   │       ├── queue/               # Queue producer/consumer helpers
-│   │       ├── middleware/          # Auth, CORS, error handling, logging
-│   │       └── types/               # Shared TypeScript types (typia-validated)
-│   │
-│   ├── auth/                        # OAuth2 server
-│   │   └── src/features/
-│   │       ├── clients/             # OAuth client CRUD
-│   │       ├── tokens/              # Access/refresh token management
-│   │       ├── grants/              # Password, authorization_code, refresh_token
-│   │       └── users/               # User management
-│   │
-│   ├── parser/                      # Article fetching & content extraction
-│   │   └── src/features/
-│   │       ├── fetcher/             # URL fetching, HTTP handling
-│   │       ├── html-rewriter/       # HTMLRewriter noise-stripping pre-pass
-│   │       ├── readability/         # linkedom + @mozilla/readability extraction
-│   │       ├── browser-fallback/    # Browser Run /content fallback
-│   │       └── metadata/            # Title, author, preview image, language detection
-│   │
-│   ├── api/                         # Hono API routes (main Worker entry)
-│   │   └── src/
-│   │       ├── features/
-│   │       │   ├── entries/         # Entry CRUD, reload, exists, export
-│   │       │   ├── tags/            # Tag CRUD, entry tagging
-│   │       │   ├── annotations/     # Annotation CRUD
-│   │       │   ├── search/          # FTS5 search endpoint
-│   │       │   ├── config/          # User config endpoint
-│   │       │   ├── tagging-rules/   # Rule export/evaluation engine
-│   │       │   ├── share/           # Public share link generation
-│   │       │   ├── import/          # Import from Pocket, Wallabag, etc.
-│   │       │   └── users/           # /api/user endpoint
-│   │       └── index.ts             # Hono app + Worker fetch/scheduled handlers
-│   │
-│   └── web/                         # Server-rendered HTML management UI
-│       └── src/
-│           ├── features/
-│           │   ├── auth/            # Login page, session handling
-│           │   ├── developer/       # OAuth client management pages
-│           │   ├── settings/        # User config pages
-│           │   ├── entries/         # Basic article list/detail views
-│           │   └── share/           # Public share page rendering
-│           ├── templates/           # HTML layout helper
-│           └── assets/              # (Reserved) static asset sources
-│
-│   # Static assets (CSS, progressive-enhancement JS) live in
-│   # packages/web/public/ and are served via the wrangler `assets` binding.
-│
-├── migrations/                      # D1 SQL migrations
-│   ├── 0001_initial_schema.sql
-│   ├── 0002_fts5_indexes.sql
-│   └── 0003_seed_user.sql
-│
-├── tests/
-│   ├── unit/                        # Per-package unit tests
-│   ├── integration/                 # API request/response integration tests
-│   ├── e2e/                         # Playwright tests against dev deployment
-│   └── compat/                      # Wallabag response shape compatibility tests
-│
-├── wrangler.jsonc
-├── tsconfig.json
-├── ttconfig.json                    # ttsc config for typia transforms
-└── package.json                     # Root workspace config
-```
 
 ## 5. Build Pipeline
 
-Typia v13 uses a Go-based AST transformer invoked via `ttsc`. The build must
-compile TypeScript through `ttsc` before Wrangler bundles the output.
+Typia v13 uses a Go-based AST transformer invoked via `ttsc`.
+The build must compile TypeScript through `ttsc` before Wrangler bundles the output.
 
-```jsonc
-// ttconfig.json
+```json
+// tsconfig.json
 {
   "compilerOptions": {
     "strict": true,
@@ -157,7 +86,7 @@ compile TypeScript through `ttsc` before Wrangler bundles the output.
 }
 ```
 
-```jsonc
+```json
 // package.json scripts
 {
   "scripts": {
@@ -173,29 +102,32 @@ compile TypeScript through `ttsc` before Wrangler bundles the output.
 }
 ```
 
-Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) →
-`dist-ttsc/` → Wrangler esbuild bundles → `dist/worker.js`.
+Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) → `dist-ttsc/` → Wrangler esbuild bundles → `dist/worker.js`.
+
 
 ## 6. Authentication — Full OAuth2
 
+
 ### 6.1 Supported Grant Types
 
-| Grant Type | Flow | Use Case |
-|---|---|---|
-| `password` | Client sends username+password → token | Wallabag mobile apps, CLI tools |
-| `authorization_code` | Browser redirect flow | Third-party web apps |
-| `refresh_token` | Exchange refresh token → new access token | All clients for token renewal |
-| `token` | Implicit grant (legacy) | Old browser-based clients |
+Grant Type | Flow | Use Case
+---------- | ---- | --------
+`password` | Client sends username+password → token | Wallabag mobile apps, CLI tools
+`authorization_code` | Browser redirect flow | Third-party web apps
+`refresh_token` | Exchange refresh token → new access token | All clients for token renewal
+`token` | Implicit grant (legacy) | Old browser-based clients
+
 
 ### 6.2 Endpoints
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/oauth/v2/token` | POST | Issue/refresh tokens |
-| `/oauth/v2/auth` | GET | Authorization page (auth code flow) |
-| `/developer` | GET | List OAuth clients (web UI) |
-| `/developer/client/create` | GET/POST | Create OAuth client (web UI) |
-| `/developer/client/delete/{id}` | POST | Delete OAuth client (web UI) |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/oauth/v2/token` | POST | Issue/refresh tokens
+`/oauth/v2/auth` | GET | Authorization page (auth code flow)
+`/developer` | GET | List OAuth clients (web UI)
+`/developer/client/create` | GET/POST | Create OAuth client (web UI)
+`/developer/client/delete/{id}` | POST | Delete OAuth client (web UI)
+
 
 ### 6.3 Token Format
 
@@ -214,16 +146,19 @@ Response shape:
 }
 ```
 
+
 ### 6.4 Client ID Format
 
 `{id}_{randomId}` — e.g.,
 `1_3o53gl30vhgk0c8ks4cocww08o84448osgo40wgw4gwkoo8skc`. Matches Wallabag's
 format exactly.
 
-### 6.5 Allowed Grant Types Per Client
+
+### 6.5 Allowed Grant Types per Client
 
 `token`, `authorization_code`, `password`, `refresh_token` — all enabled by
 default on client creation, matching Wallabag's behavior.
+
 
 ## 7. Article Fetching & Parsing Pipeline
 
@@ -256,6 +191,7 @@ URL
      language, reading_time, mimetype
 ```
 
+
 ### 7.1 HTMLRewriter Pre-Pass Rules
 
 **Always strip** (safe — Readability would discard anyway):
@@ -275,6 +211,7 @@ URL
 **Conservative by design** — when in doubt, leave it in and let Readability
 decide.
 
+
 ### 7.2 Content Quality Threshold
 
 After Readability extraction, check:
@@ -283,43 +220,47 @@ After Readability extraction, check:
 - `title` is non-empty
 - If both pass → accept; otherwise → trigger Browser Run fallback
 
+
 ## 8. API Endpoints — Full Compatibility
+
 
 ### 8.1 Entries
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/entries` | GET | List entries (filtered, sorted, paginated) |
-| `/api/entries` | POST | Create entry (fetch & parse URL) |
-| `/api/entries/{entry}` | GET | Get single entry |
-| `/api/entries/{entry}` | DELETE | Delete entry |
-| `/api/entries/{entry}` | PATCH | Update entry properties |
-| `/api/entries/{entry}/export` | GET | Export entry in format |
-| `/api/entries/{entry}/reload` | GET | Re-fetch & re-parse entry |
-| `/api/entries/{entry}/tags` | POST | Add tags to entry |
-| `/api/entries/{entry}/tags/{tag}` | DELETE | Remove tag from entry |
-| `/api/entries/exists` | GET | Check if entry exists by URL |
-| `/api/entries/list` | GET | Deprecated list endpoint |
-| `/api/entries/lists` | GET | Deprecated lists endpoint |
-| `/api/entries/tags/list` | GET | Tags for entries list |
-| `/api/entries/tags/lists` | GET | Tags for entries lists |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/entries` | GET | List entries (filtered, sorted, paginated)
+`/api/entries` | POST | Create entry (fetch & parse URL)
+`/api/entries/{entry}` | GET | Get single entry
+`/api/entries/{entry}` | DELETE | Delete entry
+`/api/entries/{entry}` | PATCH | Update entry properties
+`/api/entries/{entry}/export` | GET | Export entry in format
+`/api/entries/{entry}/reload` | GET | Re-fetch & re-parse entry
+`/api/entries/{entry}/tags` | POST | Add tags to entry
+`/api/entries/{entry}/tags/{tag}` | DELETE | Remove tag from entry
+`/api/entries/exists` | GET | Check if entry exists by URL
+`/api/entries/list` | GET | Deprecated list endpoint
+`/api/entries/lists` | GET | Deprecated lists endpoint
+`/api/entries/tags/list` | GET | Tags for entries list
+`/api/entries/tags/lists` | GET | Tags for entries lists
+
 
 ### 8.2 Entry List Query Parameters
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `archive` | integer (0,1) | 0 | Filter by archived status |
-| `starred` | integer (0,1) | 0 | Filter by starred status |
-| `sort` | string | `created` | Sort field: `created`, `updated`, `archived` |
-| `order` | string | `desc` | Sort order: `asc`, `desc` |
-| `page` | integer | 1 | Page number |
-| `perPage` | integer | 30 | Results per page |
-| `tags` | string | — | Comma-separated tags (AND match) |
-| `since` | integer | 0 | Timestamp for updated entries |
-| `public` | integer (0,1) | 0 | Filter by public link |
-| `detail` | string | `full` | `full` (include content) or `metadata` |
-| `domain_name` | string | — | Filter by domain |
-| `annotations` | integer (0,1) | — | Filter by annotation presence |
+Param | Type | Default | Description
+----- | ---- | ------- | -----------
+`archive` | integer (0,1) | 0 | Filter by archived status
+`starred` | integer (0,1) | 0 | Filter by starred status
+`sort` | string | `created` | Sort field: `created`, `updated`, `archived`
+`order` | string | `desc` | Sort order: `asc`, `desc`
+`page` | integer | 1 | Page number
+`perPage` | integer | 30 | Results per page
+`tags` | string | — | Comma-separated tags (AND match)
+`since` | integer | 0 | Timestamp for updated entries
+`public` | integer (0,1) | 0 | Filter by public link
+`detail` | string | `full` | `full` (include content) or `metadata`
+`domain_name` | string | — | Filter by domain
+`annotations` | integer (0,1) | — | Filter by annotation presence
+
 
 ### 8.3 Entry Response Shape
 
@@ -352,6 +293,7 @@ After Readability extraction, check:
 }
 ```
 
+
 ### 8.4 Collection Response Shape (HATEOAS/HAL)
 
 ```json
@@ -375,24 +317,26 @@ After Readability extraction, check:
 The `_links` pagination URLs must preserve all filter query parameters (archive,
 starred, tags, since, domain_name, etc.).
 
+
 ### 8.5 Tags
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/tags` | GET | List all tags |
-| `/api/tags` | DELETE | Delete a tag (by query param) |
-| `/api/tags/{tag}` | DELETE | Delete tag by ID |
-| `/api/tag/label` | GET | Get tag by label |
-| `/api/tags/label` | GET | Get tags by labels |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/tags` | GET | List all tags
+`/api/tags` | DELETE | Delete a tag (by query param)
+`/api/tags/{tag}` | DELETE | Delete tag by ID
+`/api/tag/label` | GET | Get tag by label
+`/api/tags/label` | GET | Get tags by labels
+
 
 ### 8.6 Annotations
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/annotations/{entry}` | GET | List annotations for entry |
-| `/api/annotations/{entry}` | POST | Create annotation |
-| `/api/annotations/{annotation}` | PUT | Update annotation |
-| `/api/annotations/{annotation}` | DELETE | Delete annotation |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/annotations/{entry}` | GET | List annotations for entry
+`/api/annotations/{entry}` | POST | Create annotation
+`/api/annotations/{annotation}` | PUT | Update annotation
+`/api/annotations/{annotation}` | DELETE | Delete annotation
 
 Annotation shape:
 
@@ -407,27 +351,30 @@ Annotation shape:
 }
 ```
 
+
 ### 8.7 Config
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/config` | GET | Get user configuration |
-| `/api/config` | PUT/PATCH | Update user configuration |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/config` | GET | Get user configuration
+`/api/config` | PUT/PATCH | Update user configuration
+
 
 ### 8.8 Search
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/search` | GET | Search entries by term |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/search` | GET | Search entries by term
 
 Query params: `term`, `page`, `perPage`. Searches across title, content, url,
 and annotation text. Returns same collection shape as `/api/entries`.
 
+
 ### 8.9 Tagging Rules
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/taggingrule/export` | GET | Export all tagging rules as JSON |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/taggingrule/export` | GET | Export all tagging rules as JSON
 
 Tagging rules use an expression language with these allowed variables and
 operators:
@@ -443,39 +390,79 @@ tags: `video,entertainment`
 
 Rules are evaluated automatically when new entries are saved.
 
+
 ### 8.10 Users
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/user` | GET | Get current user info |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/user` | GET | Get current user info
+
 
 ### 8.11 Other
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/info` | GET | Instance info |
-| `/api/version` | GET | API version (returns `"2.x"`) |
+Endpoint | Method | Description
+-------- | ------ | -----------
+`/api/info` | GET | Instance info
+`/api/version` | GET | API version (returns `"2.x"`)
+
 
 ### 8.12 Public Share
 
-| Route | Method | Description |
-|---|---|---|
-| `/share/{uuid}` | GET | Public article view (no auth) |
+Route | Method | Description
+----- | ------ | -----------
+`/share/{uuid}` | GET | Public article view (no auth)
 
 Returns server-rendered HTML with article title, content, OG meta tags, and link
 to original URL.
 
+
+### 8.13 RSS / Atom Feeds
+
+OpenBag can expose the user's recent entries as a subscribable feed for any RSS
+reader (Reeder, Feedly, Miniflux, NetNewsWire, etc.). Because feed readers can't
+send an OAuth2 Bearer header, authentication uses a per-user long-lived
+**feed token** appended as `?token=` to the URL.
+
+Route | Method | Auth | Description
+----- | ------ | ---- | -----------
+`/api/feed/token` | POST | Bearer | Generate (or rotate) the feed token
+`/api/feed/token` | DELETE | Bearer | Revoke the feed token
+`/api/feed` | GET | Bearer | Atom feed of the current user (API explorer convenience)
+`/api/feeds/{username}.atom` | GET | `?token=` | Atom 1.0 feed of recent entries (public URL for feed readers)
+`/api/feeds/{username}.xml` | GET | `?token=` | RSS 2.0 feed of recent entries (public URL for feed readers)
+
+**Token model**: 32-byte CSPRNG hex (256 bits), stored in `users.feed_token`.
+Lookup is exact-match. Users mint/rotate via `POST /api/feed/token`; the
+response includes ready-to-paste `atom_url` and `rss_url` strings. The username
+in the path must match the token's owner (this prevents URL-fixup confusion in
+readers, and avoids account enumeration).
+
+**Feed contents**: 50 most recent entries (any archive/starred state), sorted by
+`created_at DESC`. Each `<entry>`/`<item>` includes title, URL, guid
+(`<origin>/api/entries/{id}`), publication date, and a 500-char HTML-stripped
+summary. Atom summaries are wrapped in CDATA; RSS descriptions are
+attribute-escaped.
+
+**Caching**: `Cache-Control: private, max-age=300` — readers poll on their own
+schedule, and we don't want CDN caches serving one user's feed to another.
+
+**Safety**: all titles, URLs, and summaries are XML-escaped (attribute-escape
+for attribute contexts, text-escape for element content) to prevent feed
+injection from saved article metadata.
+
+
 ## 9. Export Formats
 
-| Format | Implementation |
-|---|---|
-| `txt` | In-Worker: strip HTML tags, plain text |
-| `csv` | In-Worker: serialize fields to CSV |
-| `json` | In-Worker: JSON serialize entry |
-| `xml` | In-Worker: XML serialize entry |
-| `markdown` | In-Worker: HTML → Markdown conversion |
-| `pdf` | Browser Run: `env.BROWSER.quickAction("pdf", { url })` |
-| `epub` | In-Worker: `epub-gen-memory` library (in-memory ZIP) |
+Format | Implementation
+------ | --------------
+`txt` | In-Worker: strip HTML tags, plain text
+`csv` | In-Worker: serialize fields to CSV
+`json` | In-Worker: JSON serialize entry
+`xml` | In-Worker: XML serialize entry
+`markdown` | In-Worker: HTML → Markdown conversion
+`pdf` | Browser Run: `env.BROWSER.quickAction("pdf", { url })`
+`epub` | In-Worker: `epub-gen-memory` library (in-memory ZIP)
+
 
 ## 10. Import Sources
 
@@ -496,6 +483,7 @@ Supported sources:
 Import flow: Upload file → parse format → enqueue individual entries → Queue
 consumer: check for duplicates, fetch & parse, store.
 
+
 ## 11. Image Proxy
 
 When an entry has proxied images:
@@ -508,7 +496,9 @@ When an entry has proxied images:
 
 No persistent storage — images persist in CDN cache until evicted by LRU.
 
+
 ## 12. Full-Text Search (FTS5)
+
 
 ### 12.1 Dual Index Strategy
 
@@ -534,6 +524,7 @@ CREATE VIRTUAL TABLE entries_fts_words USING fts5(
 );
 ```
 
+
 ### 12.2 Search Strategy
 
 - For queries ≥ 3 characters: use trigram index for substring matching
@@ -541,16 +532,19 @@ CREATE VIRTUAL TABLE entries_fts_words USING fts5(
 - Combine results, rank by BM25
 - Also search annotations via a JOIN
 
+
 ### 12.3 Sync
 
 Application-level sync: update FTS tables whenever entries are created,
 modified, or deleted. Wrapped in the same D1 batch/transaction as the entry
 mutation.
 
+
 ## 13. Database Schema (D1/SQLite)
 
 Optimized for SQLite, not mirroring Wallabag's MySQL schema. All tables include
 `user_id` for multi-user support.
+
 
 ### 13.1 Core Tables
 
@@ -709,6 +703,7 @@ CREATE TABLE tagging_rules (
 CREATE INDEX idx_tagging_rules_user ON tagging_rules(user_id);
 ```
 
+
 ### 13.2 FTS5 Virtual Tables
 
 ```sql
@@ -729,22 +724,26 @@ CREATE VIRTUAL TABLE entries_fts_words USING fts5(
 );
 ```
 
+
 ### 13.3 Timestamp Format
 
 All timestamps stored as ISO 8601 strings: `YYYY-MM-DDTHH:MM:SS+0000` (matching
 Wallabag's format).
 
+
 ## 14. Environments
 
-| Environment | D1 Database | Domain | Purpose |
-|---|---|---|---|
-| `dev` | `openbag-db-dev` | `*.workers.dev` subdomain | Staging/testing |
-| `production` | `openbag-db-prod` | Custom domain | Live service |
+Environment | D1 Database | Domain | Purpose
+----------- | ----------- | ------ | -------
+`dev` | `openbag-db-dev` | `*.workers.dev` subdomain | Staging/testing
+`production` | `openbag-db-prod` | Custom domain | Live service
 
 Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
 `ADMIN_PASSWORD_HASH`.
 
+
 ## 15. Testing Strategy
+
 
 ### 15.1 Unit Tests (Vitest)
 
@@ -753,6 +752,7 @@ Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
   handlers, response shaping
 - Typia validators tested with edge-case inputs
 
+
 ### 15.2 Integration Tests (Vitest)
 
 - Full API request/response cycle against local D1
@@ -760,12 +760,14 @@ Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
 - Verify HATEOAS pagination links, filter preservation, error responses
 - Test OAuth2 grant flows end-to-end
 
-### 15.3 E2E Tests (Playwright)
+
+### 15.3 E2e Tests (Playwright)
 
 - Run against deployed dev environment
 - Simulate real client behavior: authenticate → save URL → list entries → read →
   archive → tag → search
 - Test web UI flows: login, OAuth client creation, settings
+
 
 ### 15.4 Compatibility Test Suite
 
@@ -777,6 +779,7 @@ Secrets managed via `wrangler secret put`: `ADMIN_USERNAME`,
   shapes
 - Reference responses captured from `app.wallabag.it/api` and Wallabag test
   fixtures
+
 
 ## 16. Error Handling
 
@@ -794,6 +797,7 @@ All API errors return JSON matching Wallabag's format:
 HTTP status codes: 400 (bad request), 401 (unauthorized), 403 (forbidden), 404
 (not found), 405 (method not allowed), 500 (internal error).
 
+
 ## 17. Response Headers
 
 All API responses include:
@@ -804,15 +808,18 @@ All API responses include:
 
 This matches Wallabag's behavior.
 
+
 ## 18. API Version
 
 `GET /api/version` returns `2.x` (matching Wallabag's major API version).
+
 
 ## 19. Content-Type Negotiation
 
 Wallabag supports `.{_format}` suffix on API URLs (e.g., `/api/entries.json`,
 `/api/entries.xml`). All endpoints must handle both `Accept` header negotiation
 and URL suffix format hints, defaulting to JSON.
+
 
 ## 20. Rate Limiting & Abuse Prevention
 

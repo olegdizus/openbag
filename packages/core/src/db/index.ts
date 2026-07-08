@@ -1,13 +1,12 @@
 export * from "./types";
-export * from "./pagination";
 
 export class D1Client {
-  constructor(private db: any) {}
-  async all<T>(sql: string, params: any[] = []): Promise<T[]> {
+  constructor(private db: D1Database) {}
+  async all<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     const { results } = await this.db.prepare(sql).bind(...params).all();
     return results as T[];
   }
-  async one<T>(sql: string, params: any[] = []): Promise<T | null> {
+  async one<T = any>(sql: string, params: any[] = []): Promise<T | null> {
     const r = await this.db.prepare(sql).bind(...params).first<T>();
     return r ?? null;
   }

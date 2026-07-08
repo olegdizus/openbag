@@ -22,18 +22,13 @@
   ],
   "queues": {
     "consumers": [
-      { "queue": "entry-refetch", "max_batch_size": 10, "max_retries": 3 },
-      { "queue": "token-cleanup", "max_batch_size": 50 },
-      { "queue": "import", "max_batch_size": 5, "max_retries": 5 }
+      { "queue": "entry-refetch", "max_batch_size": 10, "max_retries": 3 }
     ]
   },
-  "browser": { "binding": "BROWSER" },
   "triggers": {
-    "crons": ["0 * * * *", "0 3 * * *", "0 0 * * SUN"]
+    "crons": ["0 * * * *", "0 3 * * *"]
   },
   "observability": {
-    "enabled": false,
-    "head_sampling_rate": 1,
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,

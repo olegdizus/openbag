@@ -28,10 +28,15 @@ function parseJsonArray(raw: string | undefined | null): string[] {
 
 export function developerRoutes() {
   const app = new Hono();
+  // Every developer route requires a logged-in session (sessionMiddleware
+  // runs at the parent /developer/* mount; this enforces the user is set).
+  app.use("*", async (c, next) => {
+    if (!c.get("user")) return c.redirect("/login", 302);
+    await next();
+  });
 
   app.get("/", async (c) => {
-    const sessionUser = c.get("user") as { id: number; username: string } | undefined;
-    if (!sessionUser) return c.redirect("/login", 302);
+    const sessionUser = c.get("user") as { id: number; username: string };
     const clients = await listClients(c.env, sessionUser.id) as ClientRow[];
 
     const items = clients.map((cl) => {
@@ -90,8 +95,7 @@ ${cards}`,
   });
 
   app.get("/client/new", (c) => {
-    const sessionUser = c.get("user") as { id: number; username: string } | undefined;
-    if (!sessionUser) return c.redirect("/login", 302);
+    const sessionUser = c.get("user") as { id: number; username: string };
     return c.html(layout({
       title: "Create OAuth Client",
       user: sessionUser,
@@ -112,8 +116,7 @@ ${cards}`,
   });
 
   app.post("/client/create", async (c) => {
-    const sessionUser = c.get("user") as { id: number; username: string } | undefined;
-    if (!sessionUser) return c.redirect("/login", 302);
+    const sessionUser = c.get("user") as { id: number; username: string };
     const body = await c.req.parseBody();
     const name = typeof body.name === "string" ? body.name : "Unnamed";
     const redirectUrisRaw = typeof body.redirect_uris === "string" ? body.redirect_uris : "http://localhost";
@@ -131,8 +134,7 @@ ${cards}`,
   });
 
   app.post("/client/delete/:id", async (c) => {
-    const sessionUser = c.get("user") as { id: number; username: string } | undefined;
-    if (!sessionUser) return c.redirect("/login", 302);
+    const sessionUser = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     await deleteClient(c.env, sessionUser.id, id);
     if (c.req.header("X-Requested-With") === "XMLHttpRequest") {

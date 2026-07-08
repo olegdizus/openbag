@@ -8,8 +8,9 @@ import { taggingRuleRoutes } from "./features/tagging-rules";
 import { importRoutes } from "./features/import";
 import { userRoutes } from "./features/users";
 import { shareRoutes } from "./features/share";
+import { feedRoutes, feedPublicRoutes } from "./features/feed";
 import { authRoutes } from "@openbag/auth";
-import { corsMiddleware, loggingMiddleware, errorMiddleware, authMiddleware, isRegistrationEnabled } from "@openbag/core";
+import { corsMiddleware, loggingMiddleware, errorMiddleware, authMiddleware, isRegistrationEnabled, D1Client } from "@openbag/core";
 
 export const app = new Hono();
 
@@ -41,11 +42,11 @@ api.route("/config", configRoutes());
 api.route("/", taggingRuleRoutes());
 api.route("/", importRoutes());
 api.route("/", userRoutes());
+api.route("/feed", feedRoutes());
 
 // DELETE /api/tag/label — singular "tag" path, Wallabag compat
 api.delete("/tag/label", async (c: any) => {
   const user = c.get("user");
-  const { D1Client } = await import("@openbag/core");
   const d = new D1Client(c.env.DB);
   let label = c.req.query("tag") || "";
   if (!label) {
@@ -61,6 +62,10 @@ api.delete("/tag/label", async (c: any) => {
 });
 
 app.route("/api", api);
+
+// Public feed URLs (auth via ?token=<feed_token>, mounted outside auth middleware
+// so RSS readers that can't send Bearer headers can fetch them).
+app.route("/api/feeds", feedPublicRoutes());
 
 // Share pages are public
 app.route("/share", shareRoutes());

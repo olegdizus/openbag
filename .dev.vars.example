@@ -2,9 +2,3 @@
 # and any account-creation path are disabled. Override in the Cloudflare dashboard
 # (Workers → your Worker → Settings → Variables) or via `wrangler secret put`.
 ALLOWED_REGISTRATION=true
-
-# Local development secrets (copy to .dev.vars)
-# wrangler secret put ADMIN_USERNAME
-# wrangler secret put ADMIN_PASSWORD_HASH
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD_HASH=$2b$12$PLACEHOLDER_BCRYPT_HASH

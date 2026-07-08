@@ -1,4 +1,4 @@
-import { D1Client } from "@openbag/core";
+import { D1Client, randomHex } from "@openbag/core";
 
 export async function findClient(env: any, clientId: string, clientSecret: string) {
   const db = new D1Client(env.DB);
@@ -13,12 +13,8 @@ export async function findClient(env: any, clientId: string, clientSecret: strin
 
 export async function createClient(env: any, userId: number, name: string, redirectUris: string[], allowedGrantTypes: string[]) {
   const db = new D1Client(env.DB);
-  const randomBytes = new Uint8Array(32);
-  crypto.getRandomValues(randomBytes);
-  const randomId = Array.from(randomBytes).map(b => b.toString(16).padStart(2, "0")).join("");
-  const secretBytes = new Uint8Array(32);
-  crypto.getRandomValues(secretBytes);
-  const secret = Array.from(secretBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  const randomId = randomHex(32);
+  const secret = randomHex(32);
   const result = await db.run(
     "INSERT INTO oauth_clients (user_id, random_id, secret, name, redirect_uris, allowed_grant_types) VALUES (?, ?, ?, ?, ?, ?)",
     [userId, randomId, secret, name, JSON.stringify(redirectUris), JSON.stringify(allowedGrantTypes)]

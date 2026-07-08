@@ -1,23 +1,47 @@
 import { Hono } from "hono";
 import { D1Client } from "@openbag/core";
 import { layout } from "../../templates/layout";
+import {
+  getFeedTokenState,
+  renderFeedsSection,
+  feedsFlash,
+  feedsTokenHandlers,
+} from "../feeds";
 
 const db = (env: any) => new D1Client(env.DB);
+
+type SessionUser = { id: number; username: string };
 
 export function settingsRoutes() {
   const app = new Hono();
 
   app.get("/", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as SessionUser;
     const config = await db(c.env).one("SELECT * FROM user_config WHERE user_id = ?", [user.id]).catch(() => null);
-    const saved = c.req.query("saved") === "1";
-    const alert = saved
+    const query = c.req.query();
+
+    // Two flashes on the same page: settings save + feed-token actions.
+    // They're independent so each can trigger without masking the other.
+    const savedAlert = query.saved
       ? `      <div class="alert alert-success" role="status">Settings saved.</div>\n`
       : "";
+
+    const origin = new URL(c.req.url).origin;
+    const feedState = await getFeedTokenState(c.env, user.id);
+    const feedsSection = renderFeedsSection({ origin, state: feedState });
+    const feedsBanner = feedsFlash(query);
+    // Inject the flash right after the section's <h2>, if present.
+    const feedsBlock = feedsBanner
+      ? feedsSection.replace(
+          '        <h2>RSS / Atom Feeds</h2>',
+          `        <h2>RSS / Atom Feeds</h2>\n${feedsBanner}`,
+        )
+      : feedsSection;
+
     return c.html(layout({
       title: "Settings",
       user,
-      body: `${alert}      <h1>Settings</h1>
+      body: `${savedAlert}      <h1>Settings</h1>
       <form method="post" action="/settings">
         <fieldset>
           <label for="cfg-theme">Theme</label>
@@ -58,12 +82,14 @@ export function settingsRoutes() {
           </label>
         </fieldset>
         <button type="submit">Save</button>
-      </form>`,
+      </form>
+
+${feedsBlock}`,
     }));
   });
 
   app.post("/", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as SessionUser;
     const body = await c.req.parseBody();
     const theme = typeof body.theme === "string" ? body.theme : "baggy";
     const itemsPerPage = parseInt(typeof body.items_per_page === "string" ? body.items_per_page : "30");
@@ -80,6 +106,10 @@ export function settingsRoutes() {
 
     return c.redirect("/settings?saved=1", 302);
   });
+
+  // Feed-token actions live under /settings/feeds/* so all feed management
+  // surfaces from the Settings page itself.
+  app.route("/feeds", feedsTokenHandlers());
 
   return app;
 }

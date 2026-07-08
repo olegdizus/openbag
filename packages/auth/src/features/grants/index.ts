@@ -1,24 +1,5 @@
 import { D1Client } from "@openbag/core";
-
-async function verifyPassword(password: string, hashHex: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]
-  );
-  const bytes = new Uint8Array(hashHex.length / 2);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hashHex.substr(i * 2, 2), 16);
-  const salt = bytes.slice(0, 16);
-  const expected = bytes.slice(16);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
-    key, 256
-  );
-  const derived = new Uint8Array(bits);
-  if (derived.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < derived.length; i++) diff |= derived[i] ^ expected[i];
-  return diff === 0;
-}
+import { verifyPassword } from "../users/password";
 
 export async function passwordGrant(env: any, username: string, password: string) {
   const db = new D1Client(env.DB);

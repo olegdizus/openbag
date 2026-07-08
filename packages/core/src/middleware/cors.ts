@@ -1,7 +1,5 @@
 // CORS middleware
 
-import { Hono } from "hono";
-
 export function corsMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     c.header("Access-Control-Allow-Origin", "*");

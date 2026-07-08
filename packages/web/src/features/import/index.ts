@@ -15,14 +15,6 @@ export function importRoutes() {
       body: `      <h1>Import Bookmarks</h1>
       <form method="post" action="/import" enctype="multipart/form-data">
         <fieldset>
-          <label for="im-format">Format</label>
-          <select id="im-format" name="format">
-            <option value="wallabag">Wallabag v2 JSON</option>
-            <option value="pocket">Pocket CSV/HTML</option>
-            <option value="bookmarks">Browser bookmarks (HTML)</option>
-          </select>
-        </fieldset>
-        <fieldset>
           <label for="im-file">File</label>
           <input id="im-file" type="file" name="file" accept=".json,.csv,.html" required/>
         </fieldset>

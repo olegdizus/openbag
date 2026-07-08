@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { D1Client } from "@openbag/core";
+import { D1Client, toHex } from "@openbag/core";
 import { fetchAndParse } from "@openbag/parser";
 import { layout, escapeHtml } from "../../templates/layout";
 import { sanitizeEntryHtml, computeReadingTime } from "../../sanitize";
@@ -16,7 +16,7 @@ async function fetchEntryContent(env: any, entryId: number): Promise<void> {
     const parsed = await fetchAndParse(entry.url);
     await db(env).run(
       `UPDATE entries SET
-        title = COALESCE(NULLIF(title, ''), ?, title),
+        title = COALESCE(NULLIF(?, ''), CASE WHEN title = url THEN '' ELSE title END, url),
         content = ?,
         domain_name = COALESCE(NULLIF(domain_name, ''), ?, domain_name),
         preview_picture = COALESCE(NULLIF(preview_picture, ''), ?, preview_picture),
@@ -28,7 +28,7 @@ async function fetchEntryContent(env: any, entryId: number): Promise<void> {
       WHERE id = ?`,
       [parsed.title, parsed.content, parsed.domainName, parsed.previewPicture, parsed.language, parsed.authors, parsed.readingTime, entryId]
     );
-    console.log(`Fetched content for entry ${entryId}: ${parsed.title}`);
+    console.log(`Fetched content for entry ${entryId}: ${parsed.title || entry.url}`);
   } catch (err) {
     console.error(`Failed to fetch content for entry ${entryId}: ${(err as Error).message}`);
     await db(env).run("UPDATE entries SET is_not_parsed = 0 WHERE id = ?", [entryId]).catch(() => {});
@@ -100,6 +100,23 @@ function renderActions(e: Entry): string {
                 <button type="submit" class="btn-danger">Delete</button>
               </form>
             </div>`;
+}
+
+async function toggleFlag(c: any, column: "is_archived" | "is_starred") {
+  const user = c.get("user") as { id: number; username: string };
+  const id = parseInt(c.req.param("id"));
+  const cur = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+  if (!cur) return c.text("Not found", 404);
+  await db(c.env).run(
+    `UPDATE entries SET ${column} = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?`,
+    [cur[column] ? 0 : 1, id, user.id]
+  );
+  const entry = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
+  if (!entry) return c.text("Not found", 404);
+  if (isXhr(c)) {
+    return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
+  }
+  return c.redirect(nextUrl(c, "/entries"), 302);
 }
 
 export function entryWebRoutes() {
@@ -189,7 +206,7 @@ ${rows}
       }), 400);
     }
 
-    const urlHash = Array.from(new TextEncoder().encode(url)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+    const urlHash = toHex(new TextEncoder().encode(url));
     const result = await db(c.env).run(
       "INSERT INTO entries (user_id, url, url_hash, title, content, is_not_parsed) VALUES (?, ?, ?, ?, ?, 1)",
       [user.id, url, urlHash, title || url, ""]
@@ -272,39 +289,8 @@ ${titleAlert}${contentAlert}        ${renderActions(entry)}
     return c.json({ ready });
   });
 
-  app.post("/:id/archive", async (c) => {
-    const user = c.get("user") as { id: number; username: string };
-    const id = parseInt(c.req.param("id"));
-    const cur = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    if (!cur) return c.text("Not found", 404);
-    await db(c.env).run(
-      "UPDATE entries SET is_archived = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-      [cur.is_archived ? 0 : 1, id, user.id]
-    );
-    const entry = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    if (!entry) return c.text("Not found", 404);
-    if (isXhr(c)) {
-      return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
-    }
-    return c.redirect(nextUrl(c, "/entries"), 302);
-  });
-
-  app.post("/:id/star", async (c) => {
-    const user = c.get("user") as { id: number; username: string };
-    const id = parseInt(c.req.param("id"));
-    const cur = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    if (!cur) return c.text("Not found", 404);
-    await db(c.env).run(
-      "UPDATE entries SET is_starred = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-      [cur.is_starred ? 0 : 1, id, user.id]
-    );
-    const entry = await db(c.env).one<Entry>("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    if (!entry) return c.text("Not found", 404);
-    if (isXhr(c)) {
-      return c.html(c.req.query("view") === "detail" ? renderActions(entry) : renderRow(entry));
-    }
-    return c.redirect(nextUrl(c, "/entries"), 302);
-  });
+  app.post("/:id/archive", (c: any) => toggleFlag(c, "is_archived"));
+  app.post("/:id/star", (c: any) => toggleFlag(c, "is_starred"));
 
   app.post("/:id/title", async (c) => {
     const user = c.get("user") as { id: number; username: string };

@@ -1,17 +1,6 @@
 // Auth middleware — validates Bearer token, attaches user to context
 
 import { D1Client } from "../db";
-import type { Env } from "../types/env";
-
-// Backwards-compatible alias; prefer `Env` from @openbag/core for new code.
-export type Bindings = Env;
-
-export interface Variables {
-  user: {
-    id: number;
-    username: string;
-  };
-}
 
 export function authMiddleware() {
   return async (c: any, next: () => Promise<void>) => {

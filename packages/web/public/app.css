@@ -34,8 +34,6 @@
     --color-danger-border: #4b1f24;
     --color-star: #fbbf24;
     --color-star-bg: #2a2114;
-    --color-button-bg: #2563eb;
-    --color-button-fg: #ffffff;
     --color-input-bg: #1e293b;
     --color-code-bg: #1e293b;
   }
@@ -153,8 +151,6 @@ button {
 
 button:hover { filter: brightness(1.05); }
 
-button[type="submit"] { /* primary */ }
-
 /* ---------- Cards, alerts, misc ---------- */
 
 .card {
@@ -169,6 +165,18 @@ button[type="submit"] { /* primary */ }
 .alert-success { background: var(--color-star-bg); color: var(--color-star); border: 1px solid var(--color-star); }
 
 .text-muted { color: var(--color-muted); font-size: 0.875rem; }
+
+/* ---------- Settings sections ---------- */
+
+.settings-section {
+  margin-top: 32px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.settings-section > h2 {
+  scroll-margin-top: 24px; /* keeps the #feeds anchor clear of the sticky header */
+}
 
 /* ---------- Tables ---------- */
 

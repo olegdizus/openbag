@@ -1,66 +1,31 @@
 import { Hono } from "hono";
+import { D1Client, randomHex } from "@openbag/core";
 import { findClient } from "./features/clients";
 import { createAccessToken, createRefreshToken } from "./features/tokens";
 import { passwordGrant, refreshTokenGrant, exchangeAuthCode } from "./features/grants";
-import { findUserByUsername, createUser } from "./features/users";
-import { D1Client } from "@openbag/core";
-
-function randomToken(bytes: number): string {
-  const buf = new Uint8Array(bytes);
-  crypto.getRandomValues(buf);
-  return Array.from(buf).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-type Env = {
-  DB: D1Database;
-};
+import { findUserByUsername } from "./features/users";
 
 export function authRoutes() {
-  const app = new Hono<{ Bindings: Env; Variables: { user: { id: number; username: string } } }>();
+  const app = new Hono<{ Bindings: { DB: D1Database }; Variables: { user: { id: number; username: string } } }>();
 
   // Wallabag-compatible token endpoint
   app.post("/oauth/v2/token", async (c) => {
     const contentType = c.req.header("content-type") || "";
-    let grantType: string | undefined;
-    let clientId: string | undefined;
-    let clientSecret: string | undefined;
-    let username: string | undefined;
-    let password: string | undefined;
-    let refreshToken: string | undefined;
-    let code: string | undefined;
-    let redirectUri: string | undefined;
-
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const body = await c.req.parseBody();
-      grantType = typeof body.grant_type === "string" ? body.grant_type : undefined;
-      clientId = typeof body.client_id === "string" ? body.client_id : undefined;
-      clientSecret = typeof body.client_secret === "string" ? body.client_secret : undefined;
-      username = typeof body.username === "string" ? body.username : undefined;
-      password = typeof body.password === "string" ? body.password : undefined;
-      refreshToken = typeof body.refresh_token === "string" ? body.refresh_token : undefined;
-      code = typeof body.code === "string" ? body.code : undefined;
-      redirectUri = typeof body.redirect_uri === "string" ? body.redirect_uri : undefined;
-    } else {
-      const body = await c.req.json<Record<string, any>>();
-      grantType = body.grant_type;
-      clientId = body.client_id;
-      clientSecret = body.client_secret;
-      username = body.username;
-      password = body.password;
-      refreshToken = body.refresh_token;
-      code = body.code;
-      redirectUri = body.redirect_uri;
-    }
+    const body = contentType.includes("application/x-www-form-urlencoded")
+      ? await c.req.parseBody()
+      : await c.req.json<Record<string, any>>();
+    const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+    const grantType = str(body.grant_type);
+    const clientId = str(body.client_id);
+    const clientSecret = str(body.client_secret);
+    const username = str(body.username);
+    const password = str(body.password);
+    const refreshToken = str(body.refresh_token);
+    const code = str(body.code);
+    const redirectUri = str(body.redirect_uri);
 
     if (!grantType || !clientId || !clientSecret) {
       return c.json({ error: "invalid_request" }, 400);
-    }
-
-    // Parse client id
-    const parts = clientId.split("_");
-    const numericId = parseInt(parts[0]);
-    if (isNaN(numericId)) {
-      return c.json({ error: "invalid_client" }, 401);
     }
 
     const client = await findClient(c.env, clientId, clientSecret);
@@ -69,52 +34,31 @@ export function authRoutes() {
     }
 
     let userId: number;
-    let accessToken: string;
-    let refreshTokenOut: string | undefined;
-
     try {
       switch (grantType) {
-        case "password": {
-          if (!username || !password) {
-            return c.json({ error: "invalid_grant" }, 400);
-          }
+        case "password":
+          if (!username || !password) return c.json({ error: "invalid_grant" }, 400);
           userId = await passwordGrant(c.env, username, password);
-          accessToken = await createAccessToken(c.env, userId, client.id);
-          refreshTokenOut = await createRefreshToken(c.env, userId, client.id);
           break;
-        }
         case "refresh_token": {
-          if (!refreshToken) {
-            return c.json({ error: "invalid_grant" }, 400);
-          }
+          if (!refreshToken) return c.json({ error: "invalid_grant" }, 400);
           const row = await refreshTokenGrant(c.env, refreshToken);
-          if (!row) {
-            return c.json({ error: "invalid_grant" }, 400);
-          }
+          if (!row) return c.json({ error: "invalid_grant" }, 400);
           userId = row.user_id;
-          accessToken = await createAccessToken(c.env, userId, client.id);
-          refreshTokenOut = await createRefreshToken(c.env, userId, client.id);
           break;
         }
         case "authorization_code": {
-          if (!code) {
-            return c.json({ error: "invalid_grant" }, 400);
-          }
+          if (!code) return c.json({ error: "invalid_grant" }, 400);
           const row = await exchangeAuthCode(c.env, code);
-          if (!row) {
-            return c.json({ error: "invalid_grant" }, 400);
-          }
+          if (!row) return c.json({ error: "invalid_grant" }, 400);
           userId = row.user_id;
-          accessToken = await createAccessToken(c.env, userId, client.id);
-          refreshTokenOut = await createRefreshToken(c.env, userId, client.id);
           break;
         }
         case "token": {
           // Legacy implicit grant — use admin user
           const user = await findUserByUsername(c.env, "admin");
+          if (!user) return c.json({ error: "invalid_grant" }, 400);
           userId = user.id;
-          accessToken = await createAccessToken(c.env, userId, client.id);
-          refreshTokenOut = await createRefreshToken(c.env, userId, client.id);
           break;
         }
         default:
@@ -125,6 +69,8 @@ export function authRoutes() {
       return c.json({ error: message }, 400);
     }
 
+    const accessToken = await createAccessToken(c.env, userId, client.id);
+    const refreshTokenOut = await createRefreshToken(c.env, userId, client.id);
     return c.json({
       access_token: accessToken,
       expires_in: 3600,
@@ -165,19 +111,14 @@ export function authRoutes() {
     const clientId = typeof body.client_id === "string" ? body.client_id : "";
     const redirectUri = typeof body.redirect_uri === "string" ? body.redirect_uri : "";
 
-    const parts = clientId.split("_");
-    const numericId = parseInt(parts[0]);
-    if (isNaN(numericId)) {
-      return c.html("<h1>Invalid client</h1>", 400);
-    }
-
     const client = await findClient(c.env, clientId, "");
     if (!client) {
       return c.html("<h1>Client not found</h1>", 404);
     }
 
     const user = await findUserByUsername(c.env, "admin");
-    const authCode = randomToken(48);
+    if (!user) return c.html("<h1>Admin user not found</h1>", 500);
+    const authCode = randomHex(48);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const db = new D1Client(c.env.DB);
     await db.run(

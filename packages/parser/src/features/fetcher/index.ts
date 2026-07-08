@@ -41,7 +41,7 @@ export async function fetchAndParse(url: string): Promise<ParsedContent> {
   const finalUrl = res.url || url;
   const html = await res.text();
 
-  return parseHtml(html, finalUrl, contentType);
+  return await parseHtml(html, finalUrl, contentType);
 }
 
 /**
@@ -49,13 +49,14 @@ export async function fetchAndParse(url: string): Promise<ParsedContent> {
  * Pass 1: HTMLRewriter for metadata (title, og:*, lang, canonical).
  * Pass 2: linkedom + Readability for body content, excerpt, byline.
  */
-export function parseHtml(html: string, url: string, contentType: string = "text/html"): ParsedContent {
+export async function parseHtml(html: string, url: string, contentType: string = "text/html"): Promise<ParsedContent> {
   const domainName = (() => {
     try { return new URL(url).hostname; } catch { return ""; }
   })();
 
   // --- Pass 1: metadata via HTMLRewriter (streaming, fast) ---
   let title = "";
+  let h1 = "";
   let metaDescription = "";
   let ogImage = "";
   let ogTitle = "";
@@ -66,6 +67,9 @@ export function parseHtml(html: string, url: string, contentType: string = "text
   const metaRewriter = new HTMLRewriter()
     .on("title", {
       text(el: { text: string }) { title += el.text; },
+    })
+    .on("h1", {
+      text(el: { text: string }) { if (!h1) h1 += el.text; },
     })
     .on("meta[name='description' i]", {
       element(el: { getAttribute: (s: string) => string | null }) {
@@ -98,7 +102,15 @@ export function parseHtml(html: string, url: string, contentType: string = "text
       },
     });
 
-  metaRewriter.transform(new Response(html));
+  // CRITICAL: HTMLRewriter is a *streaming* transformer — its element/text
+  // handlers fire as the transformed Response body is consumed, not when
+  // .transform() is called. If the returned Response is never read, the
+  // Workers runtime may drain it lazily (or skip chunks under CPU pressure),
+  // leaving every captured variable at its initial empty string. This was the
+  // root cause of titles silently coming back as "" in production after
+  // entries timed out / were killed. Awaiting .text() fully drains the stream
+  // so every handler has run before we read the captured variables below.
+  await metaRewriter.transform(new Response(html)).text();
 
   // --- Pass 2: content via linkedom + Readability ---
   let content = "";
@@ -125,13 +137,25 @@ export function parseHtml(html: string, url: string, contentType: string = "text
     content = extractArticleContent(html);
   }
 
+  // Repair broken paragraph splits that Readability introduces on pages that
+  // separate blocks with `<br /><br />` while wrapping inline elements (a common
+  // pattern in older essays, e.g. paulgraham.com footnotes). Readability splits
+  // such blocks into separate <p> tags at boundaries where there is text on one
+  // side and an inline element on the other with no whitespace between them,
+  // isolating stray brackets like `[` into their own paragraph and orphaning the
+  // `<a>1</a>]` immediately after it. Re-join those fragments before cleaning.
+  // (Also applied to the legacy path for safety; it is a no-op when no orphan
+  // bracket paragraphs exist.)
+  content = repairSplitParagraphs(content);
+
   // Clean the final HTML for storage.
   // Readability already sanitizes (no scripts/nav); only strip attributes to save space.
   // The legacy fallback needs the full aggressive clean.
   content = usedReadability ? stripAttributes(content) : cleanHtml(content);
 
-  // Title: prefer <title>, then og:title, then Readability
+  // Title: prefer <title>, then og:title, then the first <h1>, then Readability
   if (!title.trim() && ogTitle) title = ogTitle;
+  if (!title.trim() && h1.trim()) title = h1;
   const finalTitle = title.trim();
 
   // Calculate reading time (~200 words per minute) from cleaned content
@@ -202,6 +226,53 @@ function cleanHtml(html: string): string {
   clean = clean.replace(/\s+data-[a-z-]+="[^"]*"/gi, "");
   clean = clean.replace(/\n{3,}/g, "\n\n");
   return clean.trim();
+}
+
+/**
+ * Repair broken paragraph splits that Readability introduces on pages that
+ * separate blocks with `<br /><br />` while wrapping inline elements.
+ *
+ * Symptom: Readability splits such blocks at boundaries where there is text on
+ * one side and an inline element on the other with no whitespace between them.
+ * For sources like paulgraham.com essays — `[<a name="f1n">1</a>] note text` —
+ * this isolates stray brackets like `[` into their own <p> and orphans the
+ * following `<a>1</a>]` and the note text into a separate <p>. The rendered
+ * output then looks like:
+ *
+ *     [
+ *     [1]()] note text
+ *     [
+ *
+ * (the bogus `[1]()` happens when downstream tools convert a name-only `<a>`
+ * to markdown link syntax with an empty href). Re-joining the fragments before
+ * they are stored eliminates that artifact at the source.
+ *
+ * The repair merges a paragraph whose only content is one bracket-like
+ * character (`[` or `{`) into the immediately following sibling paragraph, so
+ * the bracket sits next to the content that was meant to follow it. The match
+ * is intentionally narrow (single bracket, no other text) to avoid corrupting
+ * legitimate `<p>[footnote text]</p>` blocks.
+ */
+function repairSplitParagraphs(html: string): string {
+  // Match: <p>…</p> whose entire inner text is one "[" (or "{", also commonly
+  // orphaned), followed by another sibling paragraph that begins with the
+  // matching close anchor (`<a ...>N</a>]`, or any text starting with `<a>`).
+  // Replace both paragraphs by merging: `<p>${bracket}${restOfNextP}`.
+  // Iterate defensively in case nested splits stack up.
+  const singleBracketRe = /<p[^>]*>\s*(\[|\{)\s*<\/p>\s*<p([^>]*)>/gi;
+  let prev: string;
+  let out = html;
+  // Limit iterations to avoid pathological loops on adversarial input.
+  for (let i = 0; i < 5; i++) {
+    prev = out;
+    out = out.replace(singleBracketRe, (_full, bracket: string, nextAttrs: string) => {
+      // Drop the now-empty first <p>, splice the bracket into the next <p>
+      // right after its opening tag.
+      return `<p${nextAttrs}>${bracket}`;
+    });
+    if (out === prev) break;
+  }
+  return out;
 }
 
 /**

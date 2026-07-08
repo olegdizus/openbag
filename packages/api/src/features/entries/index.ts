@@ -1,10 +1,8 @@
 import { Hono } from "hono";
-import { D1Client } from "@openbag/core";
+import { D1Client, toHex } from "@openbag/core";
 import { fetchAndParse, generateEpub } from "@openbag/parser";
 
 const db = (env: any) => new D1Client(env.DB);
-
-type Entry = any;
 
 function buildQuery(c: any, baseSql: string, baseParams: any[]): { sql: string; params: any[] } {
   const conditions: string[] = ["e.user_id = ?"];
@@ -66,16 +64,14 @@ function buildQuery(c: any, baseSql: string, baseParams: any[]): { sql: string; 
       const tagSub = "SELECT entry_id FROM entry_tags et JOIN tags t ON t.id = et.tag_id WHERE t.user_id = ? AND t.slug = ?";
       const tagConditions = tagLabels.map(() => `e.id IN (${tagSub})`).join(" AND ");
       sql += " AND " + tagConditions;
-      for (const _ of tagLabels) {
-        params.push(user.id);
-      }
+      params.push(...tagLabels.map(() => user.id));
     }
   }
 
   return { sql, params };
 }
 
-function collectionResponse(c: any, items: Entry[], total: number, page: number, perPage: number) {
+function collectionResponse(c: any, items: any[], total: number, page: number, perPage: number) {
   const pages = Math.ceil(total / perPage) || 1;
   const q = new URL(c.req.url);
   const baseParams = new URLSearchParams(q.search);
@@ -98,20 +94,47 @@ function collectionResponse(c: any, items: Entry[], total: number, page: number,
   };
 }
 
+/** Deterministic URL dedup key (hex of the URL bytes). */
 function hashUrl(url: string): string {
-  // Simple djb2 hash — fast, sync, unique-enough for URL dedup
-  let hash = 5381;
-  for (let i = 0; i < url.length; i++) {
-    hash = ((hash << 5) + hash) + url.charCodeAt(i);
-    hash = hash & hash; // Convert to 32-bit int
+  return toHex(new TextEncoder().encode(url));
+}
+
+/** Split a tags value (comma-string or array) into trimmed labels. */
+function parseTags(tags: unknown): string[] {
+  if (typeof tags === "string") return tags.split(",").map((t) => t.trim()).filter(Boolean);
+  if (Array.isArray(tags)) return (tags as string[]).map((t) => t.trim()).filter(Boolean);
+  return [];
+}
+
+/** Find or create a tag for a user; returns the tag row. */
+async function upsertTag(dbc: any, userId: number, label: string): Promise<{ id: number; label: string; slug: string }> {
+  const slug = label.toLowerCase().replace(/\s+/g, "-");
+  let tag = await dbc.one("SELECT id, label, slug FROM tags WHERE user_id = ? AND slug = ?", [userId, slug]).catch(() => null);
+  if (!tag) {
+    await dbc.run("INSERT INTO tags (user_id, label, slug) VALUES (?, ?, ?)", [userId, label, slug]);
+    tag = { id: (await dbc.one("SELECT last_insert_rowid() as id", [])).id, label, slug };
   }
-  // Also incorporate length to avoid collisions on similar-length URLs
-  const combined = Math.abs(hash).toString(16).padStart(8, '0') + url.length.toString(16).padStart(4, '0');
-  // Use raw hex of URL for the rest to ensure uniqueness (up to 64 chars)
-  const encoder = new TextEncoder();
-  const data = encoder.encode(url);
-  const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join('');
-  return combined + hex.slice(0, 56); // 64 chars total
+  return tag;
+}
+
+/** Upsert each label and link it to the entry; returns the upserted tags. */
+async function attachTags(dbc: any, userId: number, entryId: number, labels: string[]): Promise<{ id: number; label: string; slug: string }[]> {
+  const out: { id: number; label: string; slug: string }[] = [];
+  for (const label of labels) {
+    const tag = await upsertTag(dbc, userId, label);
+    await dbc.run("INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", [entryId, tag.id]);
+    out.push(tag);
+  }
+  return out;
+}
+
+function epubResponse(epub: ArrayBuffer, id: number) {
+  return new Response(epub, {
+    headers: {
+      "Content-Type": "application/epub+zip",
+      "Content-Disposition": `attachment; filename="entry-${id}.epub"`,
+    },
+  });
 }
 
 async function getEntryTags(dbc: any, entryId: number, userId: number) {
@@ -156,9 +179,12 @@ async function fetchContentIfNeeded(env: any, entryId: number): Promise<void> {
     if (!entry || !entry.is_not_parsed) return;
 
     const parsed = await fetchAndParse(entry.url);
+    // Prefer the parsed page title; if the fetcher couldn't find one, keep any
+    // existing non-URL title. A title that just echoes the entry URL means no
+    // human-readable title was supplied yet, so it's safe to overwrite.
     await db(env).run(
       `UPDATE entries SET
-        title = COALESCE(NULLIF(title, ''), ?, title),
+        title = COALESCE(NULLIF(?, ''), CASE WHEN title = url THEN '' ELSE title END, url),
         content = ?,
         domain_name = COALESCE(NULLIF(domain_name, ''), ?, domain_name),
         preview_picture = COALESCE(NULLIF(preview_picture, ''), ?, preview_picture),
@@ -170,7 +196,7 @@ async function fetchContentIfNeeded(env: any, entryId: number): Promise<void> {
       WHERE id = ?`,
       [parsed.title, parsed.content, parsed.domainName, parsed.previewPicture, parsed.language, parsed.authors, parsed.readingTime, entryId]
     );
-    console.log(`Fetched content for entry ${entryId}: ${parsed.title}`);
+    console.log(`Fetched content for entry ${entryId}: ${parsed.title || entry.url}`);
   } catch (err) {
     console.error(`Failed to fetch content for entry ${entryId}: ${(err as Error).message}`);
     // Mark as parsed to avoid infinite retries
@@ -313,18 +339,7 @@ export function entryRoutes() {
       }
       // Handle tags
       if (body.tags) {
-        const tags = typeof body.tags === "string" ? (body.tags as string).split(",") : body.tags;
-        for (const label of tags) {
-          const trimmed = (label as string).trim();
-          if (!trimmed) continue;
-          const slug = trimmed.toLowerCase().replace(/\s+/g, "-");
-          let tag = await db(c.env).one("SELECT id FROM tags WHERE user_id = ? AND slug = ?", [user.id, slug]).catch(() => null);
-          if (!tag) {
-            const result = await db(c.env).run("INSERT INTO tags (user_id, label, slug) VALUES (?, ?, ?)", [user.id, trimmed, slug]);
-            tag = { id: (await db(c.env).one("SELECT last_insert_rowid() as id", [])).id };
-          }
-          await db(c.env).run("INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", [existing.id, tag.id]);
-        }
+        await attachTags(db(c.env), user.id, existing.id, parseTags(body.tags));
       }
       const updated = await db(c.env).one("SELECT * FROM entries WHERE id = ?", [existing.id]);
       return c.json(await enrichEntry(db(c.env), updated, user.id));
@@ -354,18 +369,7 @@ export function entryRoutes() {
 
     // Handle tags
     if (body.tags) {
-      const tags = typeof body.tags === "string" ? (body.tags as string).split(",") : body.tags;
-      for (const label of tags) {
-        const trimmed = (label as string).trim();
-        if (!trimmed) continue;
-        const slug = trimmed.toLowerCase().replace(/\s+/g, "-");
-        let tag = await db(c.env).one("SELECT id FROM tags WHERE user_id = ? AND slug = ?", [user.id, slug]).catch(() => null);
-        if (!tag) {
-          const r = await db(c.env).run("INSERT INTO tags (user_id, label, slug) VALUES (?, ?, ?)", [user.id, trimmed, slug]);
-          tag = { id: (await db(c.env).one("SELECT last_insert_rowid() as id", [])).id };
-        }
-        await db(c.env).run("INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", [id, tag.id]);
-      }
+      await attachTags(db(c.env), user.id, id, parseTags(body.tags));
     }
 
     const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ?", [id]);
@@ -458,46 +462,25 @@ export function entryRoutes() {
 
     // Handle tags (PATCH replaces all tags on the entry)
     if (body.tags) {
-      const tags = typeof body.tags === "string" ? (body.tags as string).split(",").map((t: string) => t.trim()).filter(Boolean) : body.tags;
-      // Remove existing tags from this entry
       await db(c.env).run("DELETE FROM entry_tags WHERE entry_id = ?", [id]);
-      // Add new tags
-      for (const label of tags) {
-        const trimmed = (label as string).trim();
-        if (!trimmed) continue;
-        const slug = trimmed.toLowerCase().replace(/\s+/g, "-");
-        let tag = await db(c.env).one("SELECT id FROM tags WHERE user_id = ? AND slug = ?", [user.id, slug]).catch(() => null);
-        if (!tag) {
-          const result = await db(c.env).run("INSERT INTO tags (user_id, label, slug) VALUES (?, ?, ?)", [user.id, trimmed, slug]);
-          tag = { id: (await db(c.env).one("SELECT last_insert_rowid() as id", [])).id };
-        }
-        await db(c.env).run("INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", [id, tag.id]);
-      }
+      await attachTags(db(c.env), user.id, id, parseTags(body.tags));
     }
 
     const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     return c.json(await enrichEntry(db(c.env), entry, user.id));
   });
 
-  // PATCH /api/entries/{id}/reload — re-fetch entry
-  app.patch("/:id/reload", async (c) => {
+  // PATCH + GET /api/entries/{id}/reload — re-fetch entry (GET kept for client compat)
+  const reloadEntry = async (c: any) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
     await db(c.env).run("UPDATE entries SET is_not_parsed = 1, updated_at = datetime('now') WHERE id = ? AND user_id = ?", [id, user.id]);
     c.executionCtx.waitUntil(fetchContentIfNeeded(c.env, id));
     const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     return c.json(await enrichEntry(db(c.env), entry, user.id));
-  });
-
-  // GET /api/entries/{id}/reload — compatibility fallback
-  app.get("/:id/reload", async (c) => {
-    const user = c.get("user") || { id: 1 };
-    const id = parseInt(c.req.param("id"));
-    await db(c.env).run("UPDATE entries SET is_not_parsed = 1, updated_at = datetime('now') WHERE id = ? AND user_id = ?", [id, user.id]);
-    c.executionCtx.waitUntil(fetchContentIfNeeded(c.env, id));
-    const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
-    return c.json(await enrichEntry(db(c.env), entry, user.id));
-  });
+  };
+  app.patch("/:id/reload", reloadEntry);
+  app.get("/:id/reload", reloadEntry);
 
   // GET /api/entries/{id}/export — export entry in various formats
   app.get("/:id/export", async (c) => {
@@ -526,12 +509,7 @@ export function entryRoutes() {
       }
       case "epub": {
         const epub = await generateEpub(entry as any);
-        return new Response(epub, {
-          headers: {
-            "Content-Type": "application/epub+zip",
-            "Content-Disposition": `attachment; filename="entry-${id}.epub"`,
-          },
-        });
+        return epubResponse(epub, id);
       }
       case "mobi":
         return c.json({ error: { code: 501, message: "MOBI export not yet supported" } }, 501);
@@ -564,12 +542,7 @@ export function entryRoutes() {
         Promise.resolve(new Response(null, { status: 404 }))
       );
     }
-    return new Response(epub, {
-      headers: {
-        "Content-Type": "application/epub+zip",
-        "Content-Disposition": `attachment; filename="entry-${id}.epub"`,
-      },
-    });
+    return epubResponse(epub, id);
   });
 
   app.get("/:id/tags", async (c) => {
@@ -584,21 +557,7 @@ export function entryRoutes() {
     const user = c.get("user");
     const entryId = parseInt(c.req.param("id"));
     const body = await c.req.json();
-    const tags: string[] = (typeof body.tags === "string" ? (body.tags as string).split(",").map((t: string) => t.trim()).filter(Boolean) : body.tags) || [];
-    const addedTags = [];
-    for (const label of tags) {
-      const trimmed = (label as string).trim();
-      if (!trimmed) continue;
-      const slug = trimmed.toLowerCase().replace(/\s+/g, "-");
-      let tag = await db(c.env).one("SELECT id, label, slug FROM tags WHERE user_id = ? AND slug = ?", [user.id, slug]).catch(() => null);
-      if (!tag) {
-        const result = await db(c.env).run("INSERT INTO tags (user_id, label, slug) VALUES (?, ?, ?)", [user.id, trimmed, slug]);
-        const tagId = (await db(c.env).one("SELECT last_insert_rowid() as id", [])).id;
-        tag = { id: tagId, label: trimmed, slug };
-      }
-      await db(c.env).run("INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", [entryId, tag.id]);
-      addedTags.push(tag);
-    }
+    const addedTags = await attachTags(db(c.env), user.id, entryId, parseTags(body.tags));
     return c.json(addedTags);
   });
 
@@ -615,19 +574,9 @@ export function entryRoutes() {
     const user = c.get("user");
     const body = await c.req.json();
     const entryIds: number[] = body.entries || [];
-    const tags: string[] = body.tags || [];
+    const labels = parseTags(body.tags);
     for (const entryId of entryIds) {
-      for (const label of tags) {
-        const trimmed = (label as string).trim();
-        if (!trimmed) continue;
-        const slug = trimmed.toLowerCase().replace(/\s+/g, "-");
-        let tag = await db(c.env).one("SELECT id FROM tags WHERE user_id = ? AND slug = ?", [user.id, slug]).catch(() => null);
-        if (!tag) {
-          const result = await db(c.env).run("INSERT INTO tags (user_id, label, slug) VALUES (?, ?, ?)", [user.id, trimmed, slug]);
-          tag = { id: (await db(c.env).one("SELECT last_insert_rowid() as id", [])).id };
-        }
-        await db(c.env).run("INSERT OR IGNORE INTO entry_tags (entry_id, tag_id) VALUES (?, ?)", [entryId, tag.id]);
-      }
+      await attachTags(db(c.env), user.id, entryId, labels);
     }
     return c.json({ success: true });
   });
