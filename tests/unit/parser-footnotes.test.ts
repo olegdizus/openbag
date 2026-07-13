@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseHtml } from "@openbag/parser";
+import { parseHtml } from "../../worker/src/parser";
 
 // Regression for the broken footnote markup Readability produced on
 // paulgraham.com/boss.html (and similar `<br /><br />`-separated pages that

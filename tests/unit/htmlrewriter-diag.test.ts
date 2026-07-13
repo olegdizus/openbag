@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseHtml } from "@openbag/parser";
+import { parseHtml } from "../../worker/src/parser";
 
 // Diagnostic: ensure HTMLRewriter handlers fire at all in this Workers runtime
 // test environment. If these all pass, title parsing itself is wired correctly.

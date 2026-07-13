@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hashPassword, verifyPassword } from "@openbag/auth";
+import { hashPassword, verifyPassword } from "../../worker/src/auth";
 
 describe("password hashing", () => {
   it("round-trips a password", async () => {

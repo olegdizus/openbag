@@ -1,9 +1,7 @@
-packages:
-  - 'packages/core'
-  - 'packages/auth'
-  - 'packages/parser'
-  - 'packages/api'
-  - 'packages/web'
+# Single-package layout: web-ui/ is a static asset directory served by the
+# Worker (no package.json needed); worker/ is consumed via relative imports.
+# This file is kept (empty) so pnpm still recognizes this dir as the root.
+packages: []
 allowBuilds:
   esbuild: true
   sharp: true

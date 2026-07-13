@@ -13,7 +13,7 @@
 //   --local    target the local miniflare D1 (wrangler dev). Default: --remote.
 
 import { spawnSync } from "node:child_process";
-import { hashPassword } from "../packages/auth/src/features/users/password";
+import { hashPassword } from "../worker/src/auth/features/users/password";
 
 interface Args {
   username: string;

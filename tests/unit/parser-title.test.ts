@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseHtml } from "@openbag/parser";
+import { parseHtml } from "../../worker/src/parser";
 
 // Regression: HTMLRewriter is a streaming transformer — its handlers only fire
 // as the transformed Response body is consumed. parseHtml used to call

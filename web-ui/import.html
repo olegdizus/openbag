@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenBag — Import</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body data-app-shell>
+  <main>
+    <h1>Import</h1>
+    <div id="result"></div>
+    <h2>Add a single entry</h2>
+    <form id="single-form">
+      <fieldset>
+        <label for="single-url">URL</label>
+        <input type="url" id="single-url" name="url" placeholder="https://example.com/article" required />
+      </fieldset>
+      <fieldset>
+        <label for="single-title">Title (optional — auto-detected if blank)</label>
+        <input type="text" id="single-title" name="title" />
+      </fieldset>
+      <button type="submit">Save entry</button>
+    </form>
+
+    <h2>Bulk import</h2>
+    <form id="bulk-form">
+      <fieldset>
+        <label for="bulk-urls">One URL per line</label>
+        <textarea id="bulk-urls" name="urls" rows="8" placeholder="https://example.com/a&#10;https://example.com/b"></textarea>
+      </fieldset>
+      <button type="submit">Import all</button>
+    </form>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/import.js"></script>
+</body>
+</html>

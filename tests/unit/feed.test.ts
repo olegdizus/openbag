@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   __testBuildAtom,
   __testBuildRss,
-} from "../../packages/api/src/features/feed";
+} from "../../worker/src/api/features/feed";
 
 // The feed module exports builders indirectly; we re-expose them via the
 // `__test*` namespace below to keep the public surface clean.

@@ -19,16 +19,16 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@openbag/core": ["packages/core/src"],
-      "@openbag/auth": ["packages/auth/src"],
-      "@openbag/parser": ["packages/parser/src"],
-      "@openbag/api": ["packages/api/src"],
-      "@openbag/web": ["packages/web/src"]
+      "@openbag/worker": ["worker/src"],
+      "@openbag/worker/auth": ["worker/src/auth"],
+      "@openbag/worker/parser": ["worker/src/parser"],
+      "@openbag/worker/sanitize": ["worker/src/sanitize"]
     }
   },
   "include": [
-    "src/**/*.ts",
-    "packages/*/src/**/*.ts"
+    "worker/src/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -22,15 +22,30 @@ Independent reimplementation. Not affiliated with, sponsored by, or endorsed by 
 | Database | Cloudflare D1 (SQLite) |
 | Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers) |
 | API framework | Hono |
-| Validation | Typia v13 (compile-time AST transforms) |
-| Build pipeline | ttsc → Wrangler (esbuild) |
-| Frontend UI | Native semantic HTML + server-rendered, progressive-enhancement JS |
-| Headless browser | Cloudflare Browser Run |
+| Static assets | Workers Static Assets (`ASSETS` binding) |
 | Background jobs | Cloudflare Cron Triggers + Queues |
 | Image proxy | Cloudflare Cache API |
-| Testing | Vitest + Playwright + compatibility test suite |
+| Testing | Vitest (`@cloudflare/vitest-pool-workers` = Miniflare) |
 | Language | TypeScript (strict) |
 
+### Repository layout
+
+```
+worker/                ← Worker package: JSON API + auth + parser
+  src/                 ← entrypoint.ts, api/, auth/, parser/, middleware/, sanitize.ts, session.ts, chrono/
+  schema.sql           ← single authoritative schema (no migrations); 14 tables + FTS5 + sessions
+web-ui/                ← Static HTML/CSS/vanilla JS served by Workers Static Assets
+  *.html               ← login, entries, entry, import, tags, developer, settings, index
+  css/                 ← app.css (564 lines)
+  js/                  ← api.js (fetch wrapper), app.js (shell + auth state), per-page JS
+scripts/create-user.ts ← out-of-band user provisioning
+tests/{unit,integration}/
+```
+
+Same-origin serving: Pages served by the `ASSETS` binding at the apex domain.
+Worker handles `/api/*`, `/oauth/*`, `/share/*` because Static Assets falls
+through unknown paths via `not_found_handling: single-page-application`. Cookie
+flows stay same-origin; no CORS negotiation required.
 
 ## 3. Cloudflare Bindings
 

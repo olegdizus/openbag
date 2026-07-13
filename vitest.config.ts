@@ -4,19 +4,18 @@ import { dirname, resolve } from "node:path";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
-// Mirror the `alias` block from wrangler.jsonc so Vite can resolve the
-// @openbag/* workspace packages when transforming test files (wrangler's own
-// alias only applies to the Worker bundle, not to Vitest's Vite layer).
-const pkg = (name: string) => resolve(root, `packages/${name}/src/index.ts`);
+// After the Phase 1/2/3 refactor, tests import worker/src via relative paths.
+// The aliases below are kept for the rare test that still uses @openbag/worker
+// (and to support easy migration to package-style imports later).
+const workerSrc = resolve(root, "worker/src");
 
 export default defineWorkersConfig({
   resolve: {
     alias: {
-      "@openbag/core": pkg("core"),
-      "@openbag/auth": pkg("auth"),
-      "@openbag/parser": pkg("parser"),
-      "@openbag/api": pkg("api"),
-      "@openbag/web": pkg("web"),
+      "@openbag/worker": workerSrc,
+      "@openbag/worker/auth": resolve(workerSrc, "auth/index.ts"),
+      "@openbag/worker/parser": resolve(workerSrc, "parser/index.ts"),
+      "@openbag/worker/sanitize": resolve(workerSrc, "sanitize.ts"),
     },
   },
   test: {
