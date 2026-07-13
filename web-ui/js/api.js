@@ -64,7 +64,7 @@ window.api = (function () {
       // Preserve where the user was so login can bounce back.
       try {
         sessionStorage.setItem("login_next", location.pathname + location.search);
-      } catch (e) {}
+      } catch (e) { }
       window.location.href = "/login";
       throw new Error("Not authenticated");
     }
@@ -78,7 +78,7 @@ window.api = (function () {
           if (err && err.error && err.error.message) msg = err.error.message;
           else if (err && err.error) msg = String(err.error);
           else if (err && typeof err.error === "string") msg = err.error;
-        } catch (e) {}
+        } catch (e) { }
       }
       toast(msg);
       throw new Error(msg);

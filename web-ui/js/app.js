@@ -44,8 +44,8 @@ window.app = (function () {
       "</nav>" +
       (user
         ? '<span class="site-user">' +
-          esc(user.username) +
-          ' · <button type="button" id="logout-btn" class="logout-btn">Log out</button></span>'
+        esc(user.username) +
+        ' · <button type="button" id="logout-btn" class="logout-btn">Log out</button></span>'
         : "");
     document.body.prepend(header);
     var lb = document.getElementById("logout-btn");
@@ -78,11 +78,11 @@ window.app = (function () {
     try {
       var r = await fetch("/api/auth/me", { credentials: "same-origin" });
       if (r.ok) user = (await r.json()).user;
-    } catch (e) {}
+    } catch (e) { }
     if (!user) {
       try {
         sessionStorage.setItem("login_next", location.pathname + location.search);
-      } catch (e) {}
+      } catch (e) { }
       window.location.href = "/login";
       return null;
     }

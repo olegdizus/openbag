@@ -23,7 +23,7 @@
       ["action_mark_as_read", "list_mode", "display_thumbnails"].forEach(function (k) {
         if (form[k]) form[k].checked = !!cfg[k];
       });
-    } catch (e) {}
+    } catch (e) { }
   }
 
   if (form) {
@@ -70,21 +70,21 @@
       try {
         var data = await window.api("/api/feed/token");
         showToken(data);
-      } catch (e) {}
+      } catch (e) { }
     });
     document.getElementById("token-rotate").addEventListener("click", async function () {
       if (!window.confirm("Generate a new feed token? The old one will stop working.")) return;
       try {
         var data = await window.api("/api/feed/token", { method: "POST" });
         showToken(data);
-      } catch (e) {}
+      } catch (e) { }
     });
     document.getElementById("token-revoke").addEventListener("click", async function () {
       if (!window.confirm("Revoke the feed token?")) return;
       try {
         await window.api("/api/feed/token", { method: "DELETE" });
         showToken({ feed_token: null });
-      } catch (e) {}
+      } catch (e) { }
     });
   }
 

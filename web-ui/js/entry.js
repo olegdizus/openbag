@@ -45,12 +45,12 @@
       '<div class="actions" id="entry-actions"></div>' +
       (e.tags && e.tags.length
         ? '<div class="entry-tags">' +
-          e.tags
-            .map(function (t) {
-              return '<span class="tag">' + app.esc(t.label) + "</span>";
-            })
-            .join("") +
-          "</div>"
+        e.tags
+          .map(function (t) {
+            return '<span class="tag">' + app.esc(t.label) + "</span>";
+          })
+          .join("") +
+        "</div>"
         : "") +
       '<button type="button" id="entry-edit-btn" class="btn-edit">Edit content</button>' +
       '<div id="entry-content" data-entry-id="' +
@@ -88,7 +88,7 @@
         });
         currentEntry.is_archived = currentEntry.is_archived ? 1 : 0;
         render();
-      } catch (e) {}
+      } catch (e) { }
     });
     document.getElementById("btn-star").addEventListener("click", async function () {
       try {
@@ -98,14 +98,14 @@
         });
         currentEntry.is_starred = currentEntry.is_starred ? 1 : 0;
         render();
-      } catch (e) {}
+      } catch (e) { }
     });
     document.getElementById("btn-delete").addEventListener("click", async function () {
       if (!window.confirm("Delete this entry permanently?")) return;
       try {
         await window.api("/api/entries/" + id, { method: "DELETE" });
         window.location.href = "/entries";
-      } catch (e) {}
+      } catch (e) { }
     });
 
     // Hook the editor

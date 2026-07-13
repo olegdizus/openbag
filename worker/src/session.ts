@@ -81,7 +81,7 @@ export async function lookupSession(
   const expiresAtMs = Date.parse(row.expires_at.replace(" ", "T") + "Z");
   if (!Number.isNaN(expiresAtMs) && expiresAtMs <= Date.now()) {
     // Best-effort cleanup; ignore the rejection if D1 is slow.
-    await db.run("DELETE FROM sessions WHERE token_hash = ?", [tokenHash]).catch(() => {});
+    await db.run("DELETE FROM sessions WHERE token_hash = ?", [tokenHash]).catch(() => { });
     return null;
   }
   const user = await db.one<{ id: number; username: string }>(
@@ -92,7 +92,7 @@ export async function lookupSession(
   // Cheap, non-blocking timestamp update; failures don't fail auth.
   await db
     .run("UPDATE sessions SET last_used_at = datetime('now') WHERE token_hash = ?", [tokenHash])
-    .catch(() => {});
+    .catch(() => { });
   return user;
 }
 

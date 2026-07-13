@@ -1,10 +1,10 @@
 # web-ui/_redirects — intentionally empty.
 #
 # Same-origin routing is handled by Cloudflare Workers Static Assets via the
-# wrangler.jsonc `assets` binding: requests that match a static file
-# (e.g. /entries.html, /css/app.css, /js/api.js) are served directly; everything
-# else falls through to the Worker entrypoint (which serves /api/*, /oauth/*,
-# /share/*) thanks to `not_found_handling: single-page-application`.
+# wrangler.jsonc `assets` binding: requests that match a static file (e.g.
+# /entries.html, /css/app.css, /js/api.js) are served directly; everything else
+# falls through to the Worker entrypoint (which serves /api/*, /oauth/*, /share/*)
+# thanks to `not_found_handling: single-page-application`.
 #
 # No _redirects directives are needed for this setup. The file is kept as a
 # placeholder: if you ever split this into separate Pages + Worker deployments,

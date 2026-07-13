@@ -49,7 +49,7 @@
               method: "DELETE",
             });
             load();
-          } catch (e) {}
+          } catch (e) { }
         });
       });
     } catch (e) {

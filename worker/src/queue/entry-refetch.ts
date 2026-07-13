@@ -18,7 +18,7 @@ export async function refetchEntry(env: any, entryId: number, userId: number): P
 
   try {
     const parsed = await fetchAndParse(entry.url);
-    
+
     await db(env).run(
       `UPDATE entries SET
         title = ?,

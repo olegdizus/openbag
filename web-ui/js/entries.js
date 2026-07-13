@@ -88,10 +88,10 @@
       pagerEl.innerHTML = "";
     }
   }
-    pagerEl.innerHTML = html;
-  }
+  pagerEl.innerHTML = html;
+}
 
   app.boot().then(function () {
-    if (listEl) load();
-  });
-})();
+  if (listEl) load();
+});
+}) ();

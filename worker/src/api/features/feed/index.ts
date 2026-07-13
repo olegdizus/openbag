@@ -340,4 +340,3 @@ async function fetchEntries(env: any, userId: number): Promise<any[]> {
 // them via these typed aliases so we don't depend on HTTP/D1 plumbing.
 export const __testBuildAtom = buildAtom;
 export const __testBuildRss = buildRss;
-

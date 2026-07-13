@@ -86,7 +86,7 @@
         try {
           await window.api("/api/oauth/clients/" + id, { method: "DELETE" });
           load();
-        } catch (e) {}
+        } catch (e) { }
       });
     });
   }
@@ -106,7 +106,7 @@
         });
         draftEl.value = "";
         load();
-      } catch (e) {}
+      } catch (e) { }
     });
   }
 

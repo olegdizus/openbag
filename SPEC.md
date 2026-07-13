@@ -28,9 +28,9 @@ Independent reimplementation. Not affiliated with, sponsored by, or endorsed by 
 | Testing | Vitest (`@cloudflare/vitest-pool-workers` = Miniflare) |
 | Language | TypeScript (strict) |
 
-### Repository layout
+### Repository Layout
 
-```
+```text
 worker/                ← Worker package: JSON API + auth + parser
   src/                 ← entrypoint.ts, api/, auth/, parser/, middleware/, sanitize.ts, session.ts, chrono/
   schema.sql           ← single authoritative schema (no migrations); 14 tables + FTS5 + sessions
@@ -46,6 +46,7 @@ Same-origin serving: Pages served by the `ASSETS` binding at the apex domain.
 Worker handles `/api/*`, `/oauth/*`, `/share/*` because Static Assets falls
 through unknown paths via `not_found_handling: single-page-application`. Cookie
 flows stay same-origin; no CORS negotiation required.
+
 
 ## 3. Cloudflare Bindings
 

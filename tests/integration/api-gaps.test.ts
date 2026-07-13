@@ -10,7 +10,7 @@ import { app } from "../../worker/src/api";
 import { D1Client } from "../../worker/src";
 import { createSession } from "../../worker/src/session";
 
-const ctx = { waitUntil() {} } as unknown as ExecutionContext;
+const ctx = { waitUntil() { } } as unknown as ExecutionContext;
 
 beforeAll(async () => {
   const db = new D1Client(env.DB);

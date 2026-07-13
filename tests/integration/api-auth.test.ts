@@ -12,7 +12,7 @@ import { app } from "../../worker/src/api";
 import { D1Client } from "../../worker/src";
 import { hashPassword } from "../../worker/src/auth/features/users/password";
 
-const ctx = { waitUntil() {} } as unknown as ExecutionContext;
+const ctx = { waitUntil() { } } as unknown as ExecutionContext;
 const regEnv = (allow: string) => ({ ...env, ALLOWED_REGISTRATION: allow });
 
 function request(

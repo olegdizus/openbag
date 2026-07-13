@@ -201,7 +201,7 @@ async function fetchContentIfNeeded(env: any, entryId: number): Promise<void> {
   } catch (err) {
     console.error(`Failed to fetch content for entry ${entryId}: ${(err as Error).message}`);
     // Mark as parsed to avoid infinite retries
-    await db(env).run("UPDATE entries SET is_not_parsed = 0 WHERE id = ?", [entryId]).catch(() => {});
+    await db(env).run("UPDATE entries SET is_not_parsed = 0 WHERE id = ?", [entryId]).catch(() => { });
   }
 }
 

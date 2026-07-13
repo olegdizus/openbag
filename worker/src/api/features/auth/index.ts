@@ -187,8 +187,8 @@ export function apiAuthRoutes() {
     const db = new D1Client(c.env.DB);
     const cookieHash = token
       ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)).then((d) =>
-          Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join(""),
-        )
+        Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join(""),
+      )
       : null;
     if (!cookieHash) return c.json({ user: null }, 401);
     const session = await db.one<{ user_id: number; expires_at: string }>(
@@ -198,7 +198,7 @@ export function apiAuthRoutes() {
     if (!session) return c.json({ user: null }, 401);
     const expiresMs = Date.parse(session.expires_at.replace(" ", "T") + "Z");
     if (!Number.isNaN(expiresMs) && expiresMs <= Date.now()) {
-      await db.run("DELETE FROM sessions WHERE token_hash = ?", [cookieHash]).catch(() => {});
+      await db.run("DELETE FROM sessions WHERE token_hash = ?", [cookieHash]).catch(() => { });
       return c.json({ user: null }, 401);
     }
     const info = await getUserInfo(c.env, session.user_id);

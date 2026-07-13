@@ -28,7 +28,7 @@
         signupContainer.parentNode.appendChild(note);
       }
     })
-    .catch(function () {});
+    .catch(function () { });
 
   if (loginForm) {
     loginForm.addEventListener("submit", async function (e) {
