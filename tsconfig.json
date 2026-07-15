@@ -7,7 +7,7 @@
     "lib": [
       "esnext"
     ],
-    "types": ["@cloudflare/workers-types"],
+    "types": ["@cloudflare/workers-types", "@cloudflare/vitest-pool-workers", "node"],
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -17,21 +17,31 @@
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": ".",
-    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
     "paths": {
-      "@openbag/worker": ["worker/src"],
-      "@openbag/worker/auth": ["worker/src/auth"],
-      "@openbag/worker/parser": ["worker/src/parser"],
-      "@openbag/worker/sanitize": ["worker/src/sanitize"]
+      "@openbag/core": ["./packages/core/src/index.ts"],
+      "@openbag/core/wire": ["./packages/core/src/wire-types.ts"],
+      "@openbag/core/db": ["./packages/core/src/db/index.ts"],
+      "@openbag/api": ["./packages/api/src/index.ts"],
+      "@openbag/web-gui": ["./packages/web-gui/src/index.ts"]
     }
   },
   "include": [
-    "worker/src/**/*.ts",
+    "packages/core/**/*.ts",
+    "packages/api/**/*.ts",
+    "packages/api/**/*.tsx",
+    "packages/web-gui/**/*.ts",
+    "packages/web-gui/**/*.tsx",
     "scripts/**/*.ts",
     "tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "packages/web-gui/public",
+    "packages/web-gui/src/components",
+    "packages/web-gui/src/entrypoints",
+    "packages/web-gui/src/lib"
   ]
 }

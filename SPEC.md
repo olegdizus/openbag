@@ -18,48 +18,60 @@ Independent reimplementation. Not affiliated with, sponsored by, or endorsed by 
 
 | Layer | Technology |
 | ----- | ---------- |
-| Runtime | Cloudflare Workers |
-| Database | Cloudflare D1 (SQLite) |
+| Runtime | Cloudflare Workers (two Workers — see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
+| Database | Cloudflare D1 (SQLite), single database shared by both Workers |
 | Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers) |
-| API framework | Hono |
-| Static assets | Workers Static Assets (`ASSETS` binding) |
-| Background jobs | Cloudflare Cron Triggers + Queues |
+| HTTP framework | Hono (one router per Worker) |
+| Shared business logic | `packages/core` workspace package (pure TypeScript) |
+| Static assets | Workers Static Assets (`ASSETS` binding on the `web-gui` Worker) |
+| Background jobs | Cloudflare Cron Triggers + Queues (owned by the API Worker) |
 | Image proxy | Cloudflare Cache API |
 | Testing | Vitest (`@cloudflare/vitest-pool-workers` = Miniflare) |
 | Language | TypeScript (strict) |
 
 ### Repository Layout
 
+> **Architectural shape:** see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md).
+> The UI and API halves of OpenBag are genuinely different scenarios and are
+> split into two Workers sharing a `core` package. The UI Worker reads D1
+> directly via `core` — **no subrequest cost on SSR**.
+
 ```text
-worker/                ← Worker package: JSON API + auth + parser
-  src/                 ← entrypoint.ts, api/, auth/, parser/, middleware/, sanitize.ts, session.ts, chrono/
-  schema.sql           ← single authoritative schema (no migrations); 14 tables + FTS5 + sessions
-web-ui/                ← Static HTML/CSS/vanilla JS served by Workers Static Assets
-  *.html               ← login, entries, entry, import, tags, developer, settings, index
-  css/                 ← app.css (564 lines)
-  js/                  ← api.js (fetch wrapper), app.js (shell + auth state), per-page JS
+packages/
+├── core/                ← Shared foundation: types, queries, session, crypto,
+│                          sanitize, parser, auth primitives. Pure TypeScript,
+│                          no Hono, no HTTP, no Workers runtime imports.
+├── api/                 ← API Worker: /api/*, /oauth/*, /share/* (JSON-only).
+│   wrangler.jsonc       ← Wallabag serializers, JSON envelopes.
+│   schema.sql           ← single authoritative schema (no migrations): 14 tables + FTS5 + sessions
+│   src/                 ← entrypoint.ts, api routes, auth, queue consumers, cron handlers
+└── web-gui/             ← UI Worker: /, /entries, /entry, /settings, /tags, /import, /developer
+    wrangler.jsonc       ← Hono JSX SSR layouts, Web Components, /ui/* form-POST mutations.
+    public/              ← served assets: css/ + c/ (built client bundles).
 scripts/create-user.ts ← out-of-band user provisioning
 tests/{unit,integration}/
 ```
 
-Same-origin serving: Pages served by the `ASSETS` binding at the apex domain.
-Worker handles `/api/*`, `/oauth/*`, `/share/*` because Static Assets falls
-through unknown paths via `not_found_handling: single-page-application`. Cookie
-flows stay same-origin; no CORS negotiation required.
+Both Workers bind the same D1 database (`database_id` shared). Cloudflare
+routes direct `/api/*`, `/oauth/*`, `/share/*` to the API Worker and `/*` to
+the `web-gui` Worker on the apex domain. Same-origin cookies work as before;
+no CORS negotiation required.
 
 
 ## 3. Cloudflare Bindings
 
-`wrangler.jsonc`:
+Two `wrangler.jsonc` files — one per Worker. The `database_id` is the same
+for both.
 
-```json
+**`packages/api/wrangler.jsonc`** (the API Worker):
+
+```jsonc
 {
-  "name": "openbag",
+  "name": "openbag-api",
   "main": "dist/worker.js",
   "compatibility_date": "2026-06-10",
-  "assets": { "directory": "./packages/web/dist" },
   "d1_databases": [
-    { "binding": "DB", "database_name": "openbag-db" }
+    { "binding": "DB", "database_name": "openbag-db", "database_id": "…" }
   ],
   "queues": {
     "producers": ["ENTRY_REFETCH", "TOKEN_CLEANUP", "IMPORT"],
@@ -76,13 +88,47 @@ flows stay same-origin; no CORS negotiation required.
 }
 ```
 
-- **Hourly cron**: token cleanup, orphan tag removal
-- **Daily cron (3 AM)**: refetch failed entries
-- **Weekly cron (Sunday midnight)**: cleanup orphaned images, re-apply tagging
+**`packages/web-gui/wrangler.jsonc`** (the UI Worker):
+
+```jsonc
+{
+  "name": "openbag-web-gui",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-06-10",
+  "d1_databases": [
+    { "binding": "DB", "database_name": "openbag-db", "database_id": "…" }
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "none"
+  }
+}
+```
+
+The `web-gui` Worker owns static assets and the `ASSETS` binding. The API Worker
+owns queues, cron, and the `BROWSER` binding (article re-fetch fallback).
+
+- **Hourly cron** (API Worker): token cleanup, orphan tag removal
+- **Daily cron (API Worker, 3 AM)**: refetch failed entries
+- **Weekly cron (API Worker, Sunday midnight)**: cleanup orphaned images, re-apply tagging
   rules
+
+**Cloudflare route table** (per apex domain):
+
+| Pattern | Worker |
+| ------- | ------ |
+| `example.com/api/*` | `openbag-api` |
+| `example.com/oauth/*` | `openbag-api` |
+| `example.com/share/*` | `openbag-api` |
+| `example.com/*` | `openbag-web-gui` |
 
 
 ## 5. Build Pipeline
+
+OpenBag is a pnpm workspace with three packages. The build pipeline orchestrates
+them. See [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)
+for the package layout.
 
 Typia v13 uses a Go-based AST transformer invoked via `ttsc`.
 The build must compile TypeScript through `ttsc` before Wrangler bundles the output.
@@ -104,22 +150,67 @@ The build must compile TypeScript through `ttsc` before Wrangler bundles the out
 ```
 
 ```json
-// package.json scripts
+// package.json scripts (workspace root)
 {
   "scripts": {
-    "build": "ttsc && wrangler deploy --dry-run",
-    "dev": "ttsc --watch & wrangler dev",
-    "deploy": "ttsc && wrangler deploy",
-    "deploy:dev": "ttsc && wrangler deploy --env dev",
+    "build:core": "pnpm -C packages/core build",
+    "build:api": "pnpm -C packages/api build",
+    "build:web-gui": "pnpm -C packages/web-gui build",
+    "build:client": "esbuild --bundle --format=esm --target=es2022 --outdir=packages/web-gui/public/c --out-extension:.js=.js packages/web-gui/entrypoints/*.ts",
+    "build": "pnpm build:core && pnpm build:client && pnpm build:api && pnpm build:web-gui",
+    "dev": "concurrently -n api,web-gui \"pnpm -C packages/api dev\" \"pnpm -C packages/web-gui dev\"",
+    "deploy:api": "pnpm -C packages/api deploy",
+    "deploy:web-gui": "pnpm -C packages/web-gui deploy",
+    "deploy": "pnpm deploy:api && pnpm deploy:web-gui",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "db:migrate": "wrangler d1 migrations apply DB",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local"
+    "db:migrate": "wrangler d1 migrations apply DB --config packages/api/wrangler.jsonc",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config packages/api/wrangler.jsonc"
   }
 }
 ```
 
-Flow: `ttsc` (transforms `typia.*<T>()` calls → inline validators) → `dist-ttsc/` → Wrangler esbuild bundles → `dist/worker.js`.
+Flow: `pnpm build:core` (transforms `typia.*<T>()` calls → inline validators) → `pnpm build:client` (esbuild bundles the `web-gui` Worker's client JS) → per-package `ttsc` + `wrangler deploy --dry-run` for `api` and `web-gui`.
+
+### Workspace aliases (no relative paths across packages)
+
+The repo becomes a pnpm workspace. `pnpm-workspace.yaml` declares three
+packages:
+
+```yaml
+# pnpm-workspace.yaml
+packages: ["packages/*"]
+```
+
+Each of `api` and `web-gui` declares `core` as a `workspace:*` dependency:
+
+```json
+// packages/api/package.json (excerpt)
+{
+  "name": "@openbag/api",
+  "private": true,
+  "dependencies": {
+    "@openbag/core": "workspace:*",
+    "hono": "^4.7.0"
+  }
+}
+```
+
+Cross-package code imports by alias:
+
+```ts
+// packages/api/src/routes/entries.ts
+import { getEntry, type ListFilters } from "@openbag/core";
+```
+
+No relative paths like `../../../../core/src/queries/entries` are used across
+package boundaries. An ESLint `no-restricted-imports` rule enforces this —
+see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)
+for the rule text.
+
+Per-package scripts (`pnpm -C packages/<pkg> <script>`) and `pnpm --filter
+@openbag/<pkg> <script>` are both valid; prefer `-C` for the workspace-root
+orchestration scripts above.
 
 
 ## 6. Authentication — Full OAuth2

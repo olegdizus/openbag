@@ -6,9 +6,8 @@
 
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env } from "cloudflare:test";
-import { app } from "../../worker/src/api";
-import { D1Client } from "../../worker/src";
-import { createSession } from "../../worker/src/session";
+import { app } from "@openbag/api";
+import { D1Client, createSession } from "@openbag/core";
 
 const ctx = { waitUntil() { } } as unknown as ExecutionContext;
 
@@ -118,7 +117,7 @@ beforeEach(async () => {
 function authed(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("cookie", `session=${sessionId}`);
-  return app.fetch(new Request(`https://openbag.test${path}`, { ...init, headers }), env as any, ctx);
+  return Promise.resolve(app.fetch(new Request(`https://openbag.test${path}`, { ...init, headers }), env as any, ctx));
 }
 
 function jsonBody(o: unknown): string {
@@ -319,7 +318,8 @@ describe("PUT /api/config (7-field)", () => {
 
 describe("POST /api/entries/:id/content/reset", () => {
   async function insertEntry(opts: { content: string; content_raw: string | null }): Promise<number> {
-    const r = await env.DB.prepare(
+    const dbs = env.DB as D1Database;
+    const r = await dbs.prepare(
       "INSERT INTO entries (user_id, url, url_hash, title, content, content_raw, reading_time, mimetype) VALUES (1, ?, ?, ?, ?, ?, 1, 'text/html') RETURNING id",
     )
       .bind(
@@ -340,7 +340,7 @@ describe("POST /api/entries/:id/content/reset", () => {
     const body = (await res.json()) as { content: string; content_raw: null };
     expect(body.content).toBe("<p>original</p>");
     expect(body.content_raw).toBeNull();
-    const row = await env.DB.prepare("SELECT content_raw FROM entries WHERE id = ?").bind(id).first<{ content_raw: string | null }>();
+    const row = await (env.DB as D1Database).prepare("SELECT content_raw FROM entries WHERE id = ?").bind(id).first<{ content_raw: string | null }>();
     expect(row!.content_raw).toBeNull();
   });
 

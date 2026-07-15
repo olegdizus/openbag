@@ -16,7 +16,7 @@ Every official and third-party Wallabag client — browser extensions, mobile ap
 - **OAuth2 server** with `password`, `authorization_code`, `refresh_token`, and `token` grant types
 - **Article parsing pipeline** — HTMLRewriter pre-pass → linkedom + Readability → Browser Run fallback
 - **Full-text search** via SQLite FTS5 (trigram + unicode61 tokenizers)
-- **HTMX management UI** for login, settings, OAuth clients, and article viewing
+- **Web UI** — Hono JSX server-side rendering + progressive-enhancement Web Components; strict progressive enhancement (works without JS)
 - **Import from 10+ sources** — Wallabag v1/v2, Pocket, Instapaper, Pinboard, Firefox/Chrome bookmarks, and more
 - **Export to 7 formats** — TXT, CSV, JSON, XML, Markdown, PDF, EPUB
 - **Tagging rules engine** — auto-tag entries using RulerZ-compatible expressions
@@ -31,35 +31,53 @@ Every official and third-party Wallabag client — browser extensions, mobile ap
 
 | Layer | Technology |
 | --- | --- |
-| Runtime | Cloudflare Workers |
-| Database | Cloudflare D1 (SQLite) |
-| API framework | [Hono][hono] |
+| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag-web-gui`; see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
+| Database | Cloudflare D1 (SQLite), single database shared by both Workers |
+| HTTP framework | [Hono][hono] (one router per Worker) |
+| Shared logic | `@openbag/core` workspace package (pure TypeScript) |
 | Validation | Typia (compile-time AST transforms) |
-| Frontend | HTMX + server-rendered HTML |
-| Headless browser | Cloudflare Browser Rendering |
-| Background jobs | Cloudflare Cron Triggers + Queues |
+| Frontend | Hono JSX SSR + Web Components (see [docs](docs/)) |
+| Headless browser | Cloudflare Browser Rendering (bound to the API Worker) |
+| Background jobs | Cloudflare Cron Triggers + Queues (owned by the API Worker) |
 | Testing | Vitest + Playwright |
 | Language | TypeScript (strict) |
 
+
+## Documentation
+
+- [**Architecture decisions (ADRs)**](docs/adr/) — 18 MADR-format decisions covering the Wallabag-compat contract, D1 storage, opaque tokens, the UI tech stack, progressive enhancement, and the `core` + two-Worker split ([ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)).
+- [**Requirements**](docs/requirements/) — user-story requirements with Given/When/Then acceptance criteria, grouped into UI SSR, progressive enhancement, API contract, performance, and security.
+- [**Top-level docs index**](docs/README.md) — full ADR/requirements catalogues and contribution conventions.
 
 ## Project Structure
 
 ```text
 packages/
-├── core/         # Shared foundation — DB client, middleware, queue helpers, types
-├── auth/         # OAuth2 server — clients, tokens, grants, users
-├── parser/       # Article fetching & content extraction pipeline
-├── api/          # Hono API routes — entries, tags, annotations, search, etc.
-└── web/          # HTMX management UI — auth, settings, developer, entries
-migrations/       # D1 SQL migrations
-src/
-└── worker.ts     # Worker entry point (fetch + queue handlers)
+├── core/         # @openbag/core — shared foundation: types, queries, session, crypto,
+│                 #                              sanitize, parser, auth primitives. Pure TS, no Hono.
+├── api/          # @openbag/api — API Worker (openbag-api): /api/*, /oauth/*, /share/* (JSON-only)
+│                 # Wallabag serializers, JSON envelopes; owns queues + cron + Browser Rendering
+└── web-gui/      # @openbag/web-gui — UI Worker (openbag-web-gui): /, /entries, /entry, /settings, /tags, …
+                  # Hono JSX SSR + Web Components; /ui/* form-POST mutations; owns static assets
+migrations/       # D1 SQL migrations (applied via the API Worker's wrangler.jsonc)
 tests/
 ├── unit/         # Per-package unit tests
-├── integration/  # API request/response integration tests
+├── integration/  # API request/response integration tests (Wallabag JSON contract)
 ├── e2e/          # Playwright tests against dev deployment
 └── compat/       # Wallabag response shape compatibility tests
 ```
+
+> **Two Workers, one database, pnpm workspace.** [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)
+> splits OpenBag into two Cloudflare Workers sharing one D1 database via the
+> `@openbag/core` workspace package. The UI Worker reads D1 directly through
+> `core` — no subrequest cost on SSR. Cloudflare routes `/api/*`, `/oauth/*`,
+> `/share/*` to `openbag-api` and `/*` to `openbag-web-gui` on the apex domain.
+>
+> Cross-package imports use npm aliases (`@openbag/core`), never relative paths:
+> `api/` and `web-gui/` both declare `"@openbag/core": "workspace:*"` in their
+> `package.json`, and the repo root's `pnpm-workspace.yaml` declares
+> `packages: ["packages/*"]`. This keeps imports stable under file moves and
+> lets IDE goto-definition work across packages.
 
 
 ## Prerequisites
@@ -114,6 +132,22 @@ npx bcrypt-cli <your-password>
 ```bash
 npm run dev
 ```
+
+Per ADR-0018 the project runs two Cloudflare Workers (`openbag-api` +
+`openbag-web-gui`) sharing one D1 database. `pnpm dev` runs them
+concurrently with separate `wrangler dev` processes under
+`packages/api/wrangler.jsonc` and `packages/web-gui/wrangler.jsonc`.
+
+The UI client bundles are built with esbuild (one per page). To rebuild
+them automatically while editing `packages/web-gui/src/entrypoints/**`, run
+in a second terminal:
+
+```bash
+npm run watch:client
+```
+
+The web-gui Worker then serves freshly-bundled `/c/*.js` from
+`packages/web-gui/public/c/` without a Worker redeploy.
 
 
 ## Registration & User Provisioning

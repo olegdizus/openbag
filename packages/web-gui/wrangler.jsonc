@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openbag-web-gui",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-10",
+  "vars": {
+    "ALLOWED_REGISTRATION": "true"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openbag-db",
+      // Same database_id as packages/api/wrangler.jsonc — ADR-0018.
+      "database_id": "REDACTED-D1-ID"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  },
+  "//": "Static assets live in `public/` (built client bundles + css). Anything OUTSIDE public/ is treated as source (TSX server components, TS client-side Web Components) and is NOT uploaded as static — keeps server source out of the static bundle.",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Hono JSX SSR handles `/`: a SPA fallback would otherwise intercept routes
+    // like `/entries` and serve a stale `index.html` (ADR-0017).
+    "not_found_handling": "none"
+  }
+}

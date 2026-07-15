@@ -1,7 +1,10 @@
-# Single-package layout: web-ui/ is a static asset directory served by the
-# Worker (no package.json needed); worker/ is consumed via relative imports.
-# This file is kept (empty) so pnpm still recognizes this dir as the root.
-packages: []
+# pnpm workspace. OpenBag is three packages (ADR-0018):
+#   @openbag/core    — shared TS (queries, session, crypto, sanitize, parser, auth primitives, types)
+#   @openbag/api     — API Worker (/api/*, /oauth/*, /share/*)
+#   @openbag/web-gui — UI Worker (HTML SSR + /ui/* mutations + static assets)
+# Cross-package imports go through the @openbag/* aliases, never relative paths.
+packages:
+  - "packages/*"
 allowBuilds:
   esbuild: true
   sharp: true

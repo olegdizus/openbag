@@ -3,24 +3,38 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc --project tsconfig.build.json && wrangler deploy --dry-run",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "build:client": "esbuild --bundle --format=esm --target=es2022 --outdir=packages/web-gui/public/c --out-extension:.js=.js packages/web-gui/src/entrypoints/*.ts",
+    "watch:client": "esbuild --bundle --format=esm --target=es2022 --watch --outdir=packages/web-gui/public/c --out-extension:.js=.js packages/web-gui/src/entrypoints/*.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.web.json",
+    "typecheck:api": "tsc --noEmit",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
+    "build:api": "wrangler deploy --dry-run --config packages/api/wrangler.jsonc",
+    "build:web-gui": "pnpm build:client && wrangler deploy --dry-run --config packages/web-gui/wrangler.jsonc",
+    "build": "pnpm build:client && pnpm build:api && pnpm build:web-gui",
+    "dev:api": "wrangler dev --config packages/api/wrangler.jsonc",
+    "dev:web-gui": "wrangler dev --config packages/web-gui/wrangler.jsonc",
+    "dev": "concurrently -n api,web-gui -c magenta,green 'pnpm dev:api' 'pnpm dev:web-gui'",
+    "deploy:api": "wrangler deploy --config packages/api/wrangler.jsonc",
+    "deploy:web-gui": "pnpm build:client && wrangler deploy --config packages/web-gui/wrangler.jsonc",
+    "deploy": "pnpm deploy:api && pnpm deploy:web-gui",
     "test": "vitest",
-    "db:init": "wrangler d1 execute DB --local --file=worker/schema.sql",
-    "db:init:remote": "wrangler d1 execute DB --remote --file=worker/schema.sql",
-    "create-user": "tsx scripts/create-user.ts",
-    "typecheck": "tsc --noEmit"
+    "db:init": "wrangler d1 execute openbag-db --local --file=packages/core/schema.sql --config packages/api/wrangler.jsonc",
+    "db:init:remote": "wrangler d1 execute openbag-db --remote --file=packages/core/schema.sql --config packages/api/wrangler.jsonc",
+    "create-user": "tsx scripts/create-user.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.0",
     "@cloudflare/workers-types": "^4.20260610.1",
     "@mozilla/readability": "^0.6.0",
+    "@types/node": "^26.1.1",
+    "concurrently": "^9.0.0",
+    "esbuild": "^0.24.0",
     "hono": "^4.7.0",
     "linkedom": "^0.18.12",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
+    "typescript": "^7.0.2",
     "vitest": "^3.0.0",
     "wrangler": "^4.0.0"
   }
 }
+

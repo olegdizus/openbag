@@ -8,9 +8,8 @@
 
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { env } from "cloudflare:test";
-import { app } from "../../worker/src/api";
-import { D1Client } from "../../worker/src";
-import { hashPassword } from "../../worker/src/auth/features/users/password";
+import { app } from "@openbag/api";
+import { D1Client, hashPassword } from "@openbag/core";
 
 const ctx = { waitUntil() { } } as unknown as ExecutionContext;
 const regEnv = (allow: string) => ({ ...env, ALLOWED_REGISTRATION: allow });
@@ -20,7 +19,7 @@ function request(
   init: RequestInit = {},
   allow?: string,
 ): Promise<Response> {
-  return app.fetch(new Request(`https://openbag.test${path}`, init), (allow ? regEnv(allow) : env) as any, ctx);
+  return Promise.resolve(app.fetch(new Request(`https://openbag.test${path}`, init), (allow ? regEnv(allow) : env) as any, ctx));
 }
 
 function jsonHeaders(extra: Record<string, string> = {}): Record<string, string> {

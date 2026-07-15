@@ -13,7 +13,7 @@
 //   --local    target the local miniflare D1 (wrangler dev). Default: --remote.
 
 import { spawnSync } from "node:child_process";
-import { hashPassword } from "../worker/src/auth/features/users/password";
+import { hashPassword } from "@openbag/core";
 
 interface Args {
   username: string;
@@ -74,7 +74,7 @@ async function main() {
 
   const result = spawnSync(
     "wrangler",
-    ["d1", "execute", "DB", target, "--command", sql],
+    ["d1", "execute", "openbag-db", target, "--command", sql, "--config", "packages/api/wrangler.jsonc"],
     { stdio: "inherit", shell: process.platform === "win32" }
   );
 

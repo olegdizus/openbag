@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // DOM is required for client Web Components (entry-editor uses Selection /
+    // Range / TreeWalker). JSX is provided by hono/jsx.
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": [
+    "types/**/*.d.ts",
+    "packages/web-gui/src/**/*.tsx",
+    "packages/web-gui/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "packages/web-gui/public"
+  ]
+}

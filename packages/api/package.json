@@ -1,0 +1,14 @@
+{
+  "name": "@openbag/api",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@openbag/core": "workspace:*",
+    "hono": "^4.7.0"
+  }
+}

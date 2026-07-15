@@ -4,25 +4,32 @@ import { dirname, resolve } from "node:path";
 
 const root = dirname(fileURLToPath(import.meta.url));
 
-// After the Phase 1/2/3 refactor, tests import worker/src via relative paths.
-// The aliases below are kept for the rare test that still uses @openbag/worker
-// (and to support easy migration to package-style imports later).
-const workerSrc = resolve(root, "worker/src");
+// pnpm workspace aliases — @openbag/core resolves to packages/core/src,
+// @openbag/api to packages/api/src, and tests reach the API Worker via the
+// `@openbag/api` alias. The web-gui Worker is tested separately.
+const coreSrc = resolve(root, "packages/core/src/index.ts");
+const apiSrc = resolve(root, "packages/api/src/index.ts");
 
 export default defineWorkersConfig({
   resolve: {
     alias: {
-      "@openbag/worker": workerSrc,
-      "@openbag/worker/auth": resolve(workerSrc, "auth/index.ts"),
-      "@openbag/worker/parser": resolve(workerSrc, "parser/index.ts"),
-      "@openbag/worker/sanitize": resolve(workerSrc, "sanitize.ts"),
+      "@openbag/core": coreSrc,
+      "@openbag/core/db": resolve(root, "packages/core/src/db/index.ts"),
+      "@openbag/core/wire": resolve(root, "packages/core/src/wire-types.ts"),
+      "@openbag/api": apiSrc,
+      "@openbag/web-gui": resolve(root, "packages/web-gui/src/index.ts"),
     },
   },
   test: {
-    include: ["tests/**/*.test.ts"],
+    // Integration tests live under tests/integration/; unit tests are
+    // co-located next to their source — e.g. packages/core/src/auth/password.test.ts.
+    include: [
+      "tests/**/*.test.ts",
+      "packages/**/*.test.ts",
+    ],
     poolOptions: {
       workers: {
-        wrangler: { configPath: "./wrangler.jsonc" },
+        wrangler: { configPath: "./packages/api/wrangler.jsonc" },
       },
     },
   },
