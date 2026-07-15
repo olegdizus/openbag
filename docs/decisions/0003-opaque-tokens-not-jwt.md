@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0003"
-title: "ADR-0003: Opaque session and OAuth tokens (not JWT/PASETO)"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0003: Opaque session and OAuth tokens (not JWT/PASETO)
+# Opaque session and OAuth tokens (not JWT/PASETO)
 
 ## Context and Problem Statement
 

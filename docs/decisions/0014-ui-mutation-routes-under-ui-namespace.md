@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0014"
-title: "ADR-0014: UI mutations go through `/ui/*` form-POST routes"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-07-13"
-deciders: ["oleg"]
+date: 2026-07-13
+decision-makers: oleg
 ---
 
-# ADR-0014: UI mutations go through `/ui/*` form-POST routes
+# UI mutations go through `/ui/*` form-POST routes
 
 ## Context and Problem Statement
 

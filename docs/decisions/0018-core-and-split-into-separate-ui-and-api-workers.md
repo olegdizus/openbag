@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0018"
-title: "ADR-0018: `core` package + separate UI Worker and API Worker"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-07-14"
-deciders: ["oleg"]
+date: 2026-07-14
+decision-makers: oleg
 ---
 
-# ADR-0018: `core` package + separate UI Worker and API Worker
+# `core` package + separate UI Worker and API Worker
 
 ## Context and Problem Statement
 

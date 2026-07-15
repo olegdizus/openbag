@@ -31,7 +31,7 @@ Every official and third-party Wallabag client — browser extensions, mobile ap
 
 | Layer | Technology |
 | --- | --- |
-| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag-web-gui`; see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
+| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag-web-gui`; see [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
 | Database | Cloudflare D1 (SQLite), single database shared by both Workers |
 | HTTP framework | [Hono][hono] (one router per Worker) |
 | Shared logic | `@openbag/core` workspace package (pure TypeScript) |
@@ -45,7 +45,7 @@ Every official and third-party Wallabag client — browser extensions, mobile ap
 
 ## Documentation
 
-- [**Architecture decisions (ADRs)**](docs/adr/) — 18 MADR-format decisions covering the Wallabag-compat contract, D1 storage, opaque tokens, the UI tech stack, progressive enhancement, and the `core` + two-Worker split ([ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)).
+- [**Architecture decisions (ADRs)**](docs/decisions/) — 18 MADR-format decisions covering the Wallabag-compat contract, D1 storage, opaque tokens, the UI tech stack, progressive enhancement, and the `core` + two-Worker split ([ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)).
 - [**Requirements**](docs/requirements/) — user-story requirements with Given/When/Then acceptance criteria, grouped into UI SSR, progressive enhancement, API contract, performance, and security.
 - [**Top-level docs index**](docs/README.md) — full ADR/requirements catalogues and contribution conventions.
 
@@ -67,7 +67,7 @@ tests/
 └── compat/       # Wallabag response shape compatibility tests
 ```
 
-> **Two Workers, one database, pnpm workspace.** [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)
+> **Two Workers, one database, pnpm workspace.** [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)
 > splits OpenBag into two Cloudflare Workers sharing one D1 database via the
 > `@openbag/core` workspace package. The UI Worker reads D1 directly through
 > `core` — no subrequest cost on SSR. Cloudflare routes `/api/*`, `/oauth/*`,

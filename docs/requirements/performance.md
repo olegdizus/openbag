@@ -4,10 +4,10 @@ Worker bundle sizes, cold-start latency, and per-page JS budgets. All
 numbers are upper bounds; failures MUST be surfaced as failing tests or
 build assertions.
 
-Backed by [ADR-0002](../adr/0002-d1-as-primary-database.md),
-[ADR-0007](../adr/0007-htmlrewriter-prefetch-then-parser-pipeline.md),
-[ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md),
-and [ADR-0017](../adr/0017-drop-spa-fallback-asset-binding.md).
+Backed by [ADR-0002](../decisions/0002-d1-as-primary-database.md),
+[ADR-0007](../decisions/0007-htmlrewriter-prefetch-then-parser-pipeline.md),
+[ADR-0009](../decisions/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md),
+and [ADR-0017](../decisions/0017-drop-spa-fallback-asset-binding.md).
 
 ## Stories
 
@@ -41,8 +41,8 @@ and [ADR-0017](../adr/0017-drop-spa-fallback-asset-binding.md).
 - **Then** Time-to-First-Byte is under 50 ms.
 - **And** the response is complete `<500 ms` total.
 
-Backed by [ADR-0002](../adr/0002-d1-as-primary-database.md) (D1 sub-ms
-query latency) and [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md)
+Backed by [ADR-0002](../decisions/0002-d1-as-primary-database.md) (D1 sub-ms
+query latency) and [ADR-0009](../decisions/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md)
 (no `/api/auth/me` round-trip).
 
 ### PERF-003 — No client fetch on first paint
@@ -61,7 +61,7 @@ query latency) and [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-o
 - **And** no JS-driven `fetch("/api/auth/me")` or `fetch("/api/entries")`
   is initiated before Web Component hydration.
 
-Backed by [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md).
+Backed by [ADR-0009](../decisions/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md).
 
 ### PERF-004 — Per-page client JS budget
 
@@ -78,7 +78,7 @@ Backed by [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md
   `20 KB` gzipped.
 - **And** the `/entry` page bundle including the editor is under `15 KB`
   gzipped (custom contentEditable WC; no TipTap — see
-  [ADR-0015](../adr/0015-custom-contenteditable-editor-not-tiptap.md)).
+  [ADR-0015](../decisions/0015-custom-contenteditable-editor-not-tiptap.md)).
 
 ### PERF-005 — Web Components lazy-activate, not lazy-load
 
@@ -110,7 +110,7 @@ platform without burning Worker CPU,
 - **When** a request for `/css/app.css` arrives,
 - **Then** the platform serves the file and the Worker is not invoked.
 
-Backed by [ADR-0017](../adr/0017-drop-spa-fallback-asset-binding.md).
+Backed by [ADR-0017](../decisions/0017-drop-spa-fallback-asset-binding.md).
 
 ### PERF-007 — Article import pipeline uses HTMLRewriter streaming
 
@@ -127,7 +127,7 @@ streaming response,
 - **Then** HTMLRewriter pre-pass removes 60–80% of the HTML bytes before
   linkedom parses the result.
 
-Backed by [ADR-0007](../adr/0007-htmlrewriter-prefetch-then-parser-pipeline.md).
+Backed by [ADR-0007](../decisions/0007-htmlrewriter-prefetch-then-parser-pipeline.md).
 
 ### PERF-008 — D1 query count per request
 

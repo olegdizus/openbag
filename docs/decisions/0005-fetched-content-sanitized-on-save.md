@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0005"
-title: "ADR-0005: Entry content is sanitised on save, not on render"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0005: Entry content is sanitised on save, not on render
+# Entry content is sanitised on save, not on render
 
 ## Context and Problem Statement
 

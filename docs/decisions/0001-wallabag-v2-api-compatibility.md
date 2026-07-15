@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0001"
-title: "ADR-0001: Wallabag v2 API compatibility as a non-negotiable contract"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0001: Wallabag v2 API compatibility as a non-negotiable contract
+# Wallabag v2 API compatibility as a non-negotiable contract
 
 ## Context and Problem Statement
 

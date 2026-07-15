@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0008"
-title: "ADR-0008: Static assets served by the Cloudflare platform, not by the Worker"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0008: Static assets served by the Cloudflare platform, not by the Worker
+# Static assets served by the Cloudflare platform, not by the Worker
 
 > **Partially superseded (2026-07-13).** The SPA fallback portion of this
 > ADR is superseded by
@@ -69,7 +67,7 @@ static paths.
 The platform serves files when they exist; otherwise the request always
 reaches the Worker.
 
-## Decision (as adopted pre-migration)
+## Decision Outcome
 
 **Option A.** Cloudflare's platform handles static asset serving entirely.
 `binding: ASSETS` is reserved for future use but unused today. The SPA

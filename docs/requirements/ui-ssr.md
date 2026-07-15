@@ -2,7 +2,7 @@
 
 Server-side rendered UI requirements for the migration from vanilla-JS
 `packages/web-gui/` Hono JSX SSR + Web Components (see
-[ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md)).
+[ADR-0009](../decisions/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md)).
 
 Because OpenBag is not in production, these requirements describe the
 **target state** the migration lands on, not the current behaviour.
@@ -40,7 +40,7 @@ authenticated page,
   same nav links (Entries, Tags, Import, Settings, Developer) and the same
   `<span class="site-user">`.
 
-Backed by [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md).
+Backed by [ADR-0009](../decisions/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md).
 
 ### UI-SSR-003 — `/` redirects based on session
 
@@ -74,7 +74,7 @@ Backed by [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md
   `prev`/`next`) are plain `<a href="…">` elements with the right query
   parameters.
 - **And** the table is populated by the shared `getEntries(env, filters)`
-  helper (see [ADR-0013](../adr/0013-shared-data-helpers-between-ui-and-api.md)).
+  helper (see [ADR-0013](../decisions/0013-shared-data-helpers-between-ui-and-api.md)).
 
 ### UI-SSR-005 — `/entry` renders the article server-side
 
@@ -91,7 +91,7 @@ Backed by [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md
 - **Then** the response contains `<article>` with the title, metadata
   (URL, created_at, reading_time), tag chips, and sanitised content via
   `dangerouslySetInnerHTML` from `entry.content` (already sanitised on save
-  per [ADR-0005](../adr/0005-fetched-content-sanitized-on-save.md)).
+  per [ADR-0005](../decisions/0005-fetched-content-sanitized-on-save.md)).
 
 ### UI-SSR-006 — `/login` and `/signup` render real forms
 
@@ -158,7 +158,7 @@ prefilled,
 - **When** `GET /tags`,
 - **Then** the response lists every tag (no 200-row cap), grouped by
   `label/slug` with counts, calling `getTags(env, user.id)` (see
-  [ADR-0013](../adr/0013-shared-data-helpers-between-ui-and-api.md)).
+  [ADR-0013](../decisions/0013-shared-data-helpers-between-ui-and-api.md)).
 
 ### UI-SSR-010 — Static assets continue to be served by the platform
 
@@ -175,7 +175,7 @@ load fast,
 - **Then** the platform serves the file directly without invoking the Worker.
 - **And** the response does not pass through Hono.
 
-Backed by [ADR-0017](../adr/0017-drop-spa-fallback-asset-binding.md).
+Backed by [ADR-0017](../decisions/0017-drop-spa-fallback-asset-binding.md).
 
 ## Out of scope for this file
 

@@ -2,11 +2,11 @@
 
 The contract every interactive surface must satisfy: the page is fully
 functional with JavaScript disabled; JS only enhances UX. See
-[ADR-0010](../adr/0010-progressive-enhancement-as-hard-requirement.md).
+[ADR-0010](../decisions/0010-progressive-enhancement-as-hard-requirement.md).
 
 The single documented carveout is the WYSIWYG *editor* on `/entry` — see
 [UI-PE-008](#ui-pe-008--the-editor-is-the-only-js-required-surface) and
-[ADR-0015](../adr/0015-custom-contenteditable-editor-not-tiptap.md). Every
+[ADR-0015](../decisions/0015-custom-contenteditable-editor-not-tiptap.md). Every
 other surface, including the entry *reader* (without "Edit content"), works
 without JS.
 
@@ -57,7 +57,7 @@ links to work,
 - **Then** the browser navigates to `/entries?archive=1`, and the server
   returns the filtered list.
 
-Backed by [ADR-0010](../adr/0010-progressive-enhancement-as-hard-requirement.md).
+Backed by [ADR-0010](../decisions/0010-progressive-enhancement-as-hard-requirement.md).
 
 ### UI-PE-004 — Archiving, starring, deleting via real forms
 
@@ -75,7 +75,7 @@ Backed by [ADR-0010](../adr/0010-progressive-enhancement-as-hard-requirement.md)
   the response is `303 See Other` back to `/entry?id=42` with the archive
   state flipped.
 
-Backed by [ADR-0014](../adr/0014-ui-mutation-routes-under-ui-namespace.md).
+Backed by [ADR-0014](../decisions/0014-ui-mutation-routes-under-ui-namespace.md).
 
 ### UI-PE-005 — Tag delete, OAuth client delete, feed-token rotate/revoke all work without JS
 
@@ -143,10 +143,10 @@ URL without a full reload,
 - **And** the "Edit content" action is visibly documented as requiring JS
   (a `<noscript>` block explains this and links to `/entry/42/edit` if
   that no-JS path is later provided — see
-  [ADR-0015](../adr/0015-custom-contenteditable-editor-not-tiptap.md)).
+  [ADR-0015](../decisions/0015-custom-contenteditable-editor-not-tiptap.md)).
 
-Backed by [ADR-0010](../adr/0010-progressive-enhancement-as-hard-requirement.md)
-and [ADR-0015](../adr/0015-custom-contenteditable-editor-not-tiptap.md).
+Backed by [ADR-0010](../decisions/0010-progressive-enhancement-as-hard-requirement.md)
+and [ADR-0015](../decisions/0015-custom-contenteditable-editor-not-tiptap.md).
 
 ### UI-PE-009 — Islands never overwrite user data without confirmation
 
@@ -162,7 +162,7 @@ and [ADR-0015](../adr/0015-custom-contenteditable-editor-not-tiptap.md).
 - **Then** the WC reverts the UI to the prior state and dispatches a
   toast event.
 
-Backed by [ADR-0009](../adr/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md).
+Backed by [ADR-0009](../decisions/0009-ui-tech-stack-hono-jsx-wc-not-preact-or-htmx.md).
 
 ### UI-PE-010 — `<noscript>` messaging on every page
 

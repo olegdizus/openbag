@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0007"
-title: "ADR-0007: HTMLRewriter pre-pass fixes the parser pipeline"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0007: HTMLRewriter pre-pass fixes the parser pipeline
+# HTMLRewriter pre-pass fixes the parser pipeline
 
 ## Context and Problem Statement
 

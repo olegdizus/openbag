@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0012"
-title: "ADR-0012: Separate `browserAuthMiddleware` for SSR, distinct from `authMiddleware`"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-07-13"
-deciders: ["oleg"]
+date: 2026-07-13
+decision-makers: oleg
 ---
 
-# ADR-0012: Separate `browserAuthMiddleware` for SSR, distinct from `authMiddleware`
+# Separate `browserAuthMiddleware` for SSR, distinct from `authMiddleware`
 
 > **Reinforced (2026-07-14).** With [ADR-0018](0018-core-and-split-into-separate-ui-and-api-workers.md),
 > `authMiddleware` and `browserAuthMiddleware` now live in different

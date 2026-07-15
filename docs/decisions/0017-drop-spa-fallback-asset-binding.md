@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0017"
-title: "ADR-0017: Drop SPA fallback in `wrangler.jsonc`; UI routes live in the Worker"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-07-13"
-deciders: ["oleg"]
+date: 2026-07-13
+decision-makers: oleg
 ---
 
-# ADR-0017: Drop SPA fallback in `wrangler.jsonc`; UI routes live in the Worker
+# Drop SPA fallback in `wrangler.jsonc`; UI routes live in the Worker
 
 > **Supersedes (partially).** The SPA fallback portion of
 > [ADR-0008](0008-static-assets-via-workers-platform.md) is reversed by

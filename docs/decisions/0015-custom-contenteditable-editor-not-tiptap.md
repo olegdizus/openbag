@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0015"
-title: "ADR-0015: Custom contentEditable `<entry-editor>` WC (no TipTap/ProseMirror)"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-07-13"
-deciders: ["oleg"]
+date: 2026-07-13
+decision-makers: oleg
 ---
 
-# ADR-0015: Custom contentEditable `<entry-editor>` WC (no TipTap/ProseMirror)
+# Custom contentEditable `<entry-editor>` WC (no TipTap/ProseMirror)
 
 ## Context and Problem Statement
 

@@ -18,7 +18,7 @@ Independent reimplementation. Not affiliated with, sponsored by, or endorsed by 
 
 | Layer | Technology |
 | ----- | ---------- |
-| Runtime | Cloudflare Workers (two Workers — see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
+| Runtime | Cloudflare Workers (two Workers — see [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
 | Database | Cloudflare D1 (SQLite), single database shared by both Workers |
 | Full-text search | SQLite FTS5 (trigram + unicode61 tokenizers) |
 | HTTP framework | Hono (one router per Worker) |
@@ -31,7 +31,7 @@ Independent reimplementation. Not affiliated with, sponsored by, or endorsed by 
 
 ### Repository Layout
 
-> **Architectural shape:** see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md).
+> **Architectural shape:** see [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md).
 > The UI and API halves of OpenBag are genuinely different scenarios and are
 > split into two Workers sharing a `core` package. The UI Worker reads D1
 > directly via `core` — **no subrequest cost on SSR**.
@@ -127,7 +127,7 @@ owns queues, cron, and the `BROWSER` binding (article re-fetch fallback).
 ## 5. Build Pipeline
 
 OpenBag is a pnpm workspace with three packages. The build pipeline orchestrates
-them. See [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)
+them. See [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)
 for the package layout.
 
 Typia v13 uses a Go-based AST transformer invoked via `ttsc`.
@@ -205,7 +205,7 @@ import { getEntry, type ListFilters } from "@openbag/core";
 
 No relative paths like `../../../../core/src/queries/entries` are used across
 package boundaries. An ESLint `no-restricted-imports` rule enforces this —
-see [ADR-0018](docs/adr/0018-core-and-split-into-separate-ui-and-api-workers.md)
+see [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)
 for the rule text.
 
 Per-package scripts (`pnpm -C packages/<pkg> <script>`) and `pnpm --filter

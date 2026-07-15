@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0006"
-title: "ADR-0006: Hono as the HTTP framework"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0006: Hono as the HTTP framework
+# Hono as the HTTP framework
 
 ## Context and Problem Statement
 

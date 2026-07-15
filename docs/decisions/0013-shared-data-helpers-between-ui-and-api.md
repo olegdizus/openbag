@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0013"
-title: "ADR-0013: Shared data helpers used by both UI and API"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "superseded by ADR-0018"
-date: "2026-07-13"
-deciders: ["oleg"]
+date: 2026-07-13
+decision-makers: oleg
 ---
 
-# ADR-0013: Shared data helpers used by both UI and API
+# Shared data helpers used by both UI and API
 
 > **Superseded (2026-07-14) by
 > [ADR-0018](0018-core-and-split-into-separate-ui-and-api-workers.md).**

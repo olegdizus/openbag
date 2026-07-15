@@ -4,10 +4,10 @@ The Wallabag v2 + FreshRSS-compatible JSON API contract. This file defines
 the behaviours the server MUST exhibit for any client — Wallabag mobile apps,
 CLI tools, RSS readers — independent of the browser UI.
 
-See [ADR-0001](../adr/0001-wallabag-v2-api-compatibility.md),
-[ADR-0003](../adr/0003-opaque-tokens-not-jwt.md),
-[ADR-0004](../adr/0004-oauth2-grant-types.md), and
-[ADR-0011](../adr/0011-json-only-api-no-content-negotiation.md).
+See [ADR-0001](../decisions/0001-wallabag-v2-api-compatibility.md),
+[ADR-0003](../decisions/0003-opaque-tokens-not-jwt.md),
+[ADR-0004](../decisions/0004-oauth2-grant-types.md), and
+[ADR-0011](../decisions/0011-json-only-api-no-content-negotiation.md).
 
 ## Stories
 
@@ -27,7 +27,7 @@ See [ADR-0001](../adr/0001-wallabag-v2-api-compatibility.md),
   `application/json`.
 - **And** the response body is a JSON object with the Wallabag entry shape.
 
-Backed by [ADR-0011](../adr/0011-json-only-api-no-content-negotiation.md).
+Backed by [ADR-0011](../decisions/0011-json-only-api-no-content-negotiation.md).
 
 ### API-CONTRACT-002 — Entry response shape matches Wallabag
 
@@ -47,7 +47,7 @@ Wallabag server (
   `preview_picture`, `reading_time`, `tags`, `annotations`, `authors`.
 - **And** date formats match Wallabag's `2026-04-05T09:07:54+0000` style.
 
-Backed by [ADR-0001](../adr/0001-wallabag-v2-api-compatibility.md) and
+Backed by [ADR-0001](../decisions/0001-wallabag-v2-api-compatibility.md) and
 `SPEC.md` §8.3.
 
 ### API-CONTRACT-003 — Collection list shape matches Wallabag (HATEOAS/HAL)
@@ -87,7 +87,7 @@ Backed by `SPEC.md` §8.4.
 - **And** subsequent requests with `Authorization: Bearer {access_token}`
   authenticate correctly.
 
-Backed by [ADR-0004](../adr/0004-oauth2-grant-types.md) and `SPEC.md` §6.
+Backed by [ADR-0004](../decisions/0004-oauth2-grant-types.md) and `SPEC.md` §6.
 
 ### API-CONTRACT-005 — Token revocation is reliable
 
@@ -108,7 +108,7 @@ revoke them,
   `/ui/oauth/clients/{id}/delete` form route),
 - **Then** the client's tokens are revoked.
 
-Backed by [ADR-0003](../adr/0003-opaque-tokens-not-jwt.md).
+Backed by [ADR-0003](../decisions/0003-opaque-tokens-not-jwt.md).
 
 ### API-CONTRACT-006 — `GET /api/tags` returns the full tag set
 
@@ -125,7 +125,7 @@ Backed by [ADR-0003](../adr/0003-opaque-tokens-not-jwt.md).
 - **Then** the response contains every tag in `_embedded.items` with `id`,
   `label`, `slug`.
 
-Backed by [ADR-0013](../adr/0013-shared-data-helpers-between-ui-and-api.md).
+Backed by [ADR-0013](../decisions/0013-shared-data-helpers-between-ui-and-api.md).
 This is a new endpoint added as part of the UI migration; previously the
 browser `/tags` page derived tags from `/api/entries?perPage=200`.
 
@@ -146,7 +146,7 @@ held indefinitely.
   `Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000` and no
   `Domain` attribute is set.
 
-Backed by [ADR-0003](../adr/0003-opaque-tokens-not-jwt.md) and
+Backed by [ADR-0003](../decisions/0003-opaque-tokens-not-jwt.md) and
 `packages/core/src/session/index.ts:buildSessionCookie`.
 
 ### API-CONTRACT-008 — CSRF does not break legitimate clients
@@ -166,7 +166,7 @@ defences.
 - **When** the request includes a `SameSite=Strict` cookie,
 - **Then** the request succeeds.
 
-Backed by [ADR-0014](../adr/0014-ui-mutation-routes-under-ui-namespace.md).
+Backed by [ADR-0014](../decisions/0014-ui-mutation-routes-under-ui-namespace.md).
 
 ### API-CONTRACT-009 — `.json` suffix is tolerated
 

@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0002"
-title: "ADR-0002: Cloudflare D1 as the primary database"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-06-10"
-deciders: ["oleg"]
+date: 2026-06-10
+decision-makers: oleg
 ---
 
-# ADR-0002: Cloudflare D1 as the primary database
+# Cloudflare D1 as the primary database
 
 ## Context and Problem Statement
 

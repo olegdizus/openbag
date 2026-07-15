@@ -1,13 +1,11 @@
 ---
-# MADR 4.0.0 entry. See docs/adr/template.md.
-id: "ADR-0016"
-title: "ADR-0016: Big-bang UI migration cutover (no parallel old/new runs in prod)"
+# These are optional metadata elements. Feel free to remove any of them.
 status: "accepted"
-date: "2026-07-13"
-deciders: ["oleg"]
+date: 2026-07-13
+decision-makers: oleg
 ---
 
-# ADR-0016: Big-bang UI migration cutover (no parallel old/new runs in prod)
+# Big-bang UI migration cutover (no parallel old/new runs in prod)
 
 ## Context and Problem Statement
 

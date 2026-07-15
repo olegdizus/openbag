@@ -2,10 +2,10 @@
 
 Session management, CSRF, sanitisation, OAuth secret handling, and
 authentication boundary enforcement. Backed by
-[ADR-0003](../adr/0003-opaque-tokens-not-jwt.md),
-[ADR-0004](../adr/0004-oauth2-grant-types.md),
-[ADR-0005](../adr/0005-fetched-content-sanitized-on-save.md), and
-[ADR-0014](../adr/0014-ui-mutation-routes-under-ui-namespace.md).
+[ADR-0003](../decisions/0003-opaque-tokens-not-jwt.md),
+[ADR-0004](../decisions/0004-oauth2-grant-types.md),
+[ADR-0005](../decisions/0005-fetched-content-sanitized-on-save.md), and
+[ADR-0014](../decisions/0014-ui-mutation-routes-under-ui-namespace.md).
 
 ## Stories
 
@@ -27,7 +27,7 @@ authentication boundary enforcement. Backed by
 - **Then** no `session=` cookie value derivable from the table passes
   `lookupSession`.
 
-Backed by [ADR-0003](../adr/0003-opaque-tokens-not-jwt.md) and
+Backed by [ADR-0003](../decisions/0003-opaque-tokens-not-jwt.md) and
 `packages/core/src/session/index.ts:hashToken`.
 
 ### SEC-002 — Session cookie attributes are security-correct
@@ -65,7 +65,7 @@ user's behalf.
 - **When** the request is cross-site (no `SameSite=Strict` cookie match),
 - **Then** the cookie is not sent and the request fails authentication.
 
-Backed by [ADR-0014](../adr/0014-ui-mutation-routes-under-ui-namespace.md).
+Backed by [ADR-0014](../decisions/0014-ui-mutation-routes-under-ui-namespace.md).
 
 ### SEC-004 — HTML sanitisation on save is enforced on every write path
 
@@ -84,7 +84,7 @@ render surface.
   DB.
 - **And** any try to skip the sanitiser is a CI/code-review failure.
 
-Backed by [ADR-0005](../adr/0005-fetched-content-sanitized-on-save.md)
+Backed by [ADR-0005](../decisions/0005-fetched-content-sanitized-on-save.md)
 and `packages/core/src/sanitize/index.ts`.
 
 ### SEC-005 — OAuth2 client secrets never appear in SSR HTML
@@ -104,7 +104,7 @@ to anyone other than the owner,
 - **And** the share page (`/share/{uuid}`) and any public route never
   emit any OAuth secret.
 
-Backed by [ADR-0004](../adr/0004-oauth2-grant-types.md).
+Backed by [ADR-0004](../decisions/0004-oauth2-grant-types.md).
 
 ### SEC-006 — Same-origin enforcement on `/api/auth/*` POSTs
 
@@ -162,7 +162,7 @@ auth failure never returns a 302 redirect.
 - **Then** the response is `401` with a JSON body
   `{ error: { code: 401, message: "Unauthorized" } }`.
 
-Backed by [ADR-0012](../adr/0012-separate-browserauth-and-api-auth-middleware.md).
+Backed by [ADR-0012](../decisions/0012-separate-browserauth-and-api-auth-middleware.md).
 
 ### SEC-009 — OAuth2 grant types are the Wallabag-compatible set
 
@@ -180,7 +180,7 @@ Wallabag feature set.
   `refresh_token`, `token`) are enabled by default.
 - **And** the client ID is formatted as `{id}_{randomId}`.
 
-Backed by [ADR-0004](../adr/0004-oauth2-grant-types.md) and
+Backed by [ADR-0004](../decisions/0004-oauth2-grant-types.md) and
 `SPEC.md` §6.
 
 ## Out of scope for this file
