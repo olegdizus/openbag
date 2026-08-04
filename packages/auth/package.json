@@ -6,6 +6,6 @@
   "types": "src/index.ts",
   "dependencies": {
     "@wallabag/core": "file:../core",
-    "hono": "^4.7.0"
+    "hono": "^4.13.0"
   }
 }
