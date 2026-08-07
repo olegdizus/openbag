@@ -1,10 +1,3 @@
-// web-ui/pages/import.tsx — GET /import page.
-//
-// Two REAL <form> elements posting to `/ui/import/single` and
-// `/ui/import/bulk`. Without JS they submit natively and redirect to the
-// created entry / a status line. With JS, the `<import-form>` WC wires
-// dynamic URL counting + per-URL status.
-
 import { SiteShell, type User } from "../layout";
 import { esc } from "../render";
 import type { FC } from "hono/jsx";
@@ -17,6 +10,12 @@ interface ImportPageProps {
   error?: string;
 }
 
+/**
+ * Two REAL <form> elements posting to `/ui/import/single` and
+ * `/ui/import/bulk`. Without JS they submit natively and redirect to the
+ * created entry / a status line. With JS, the `<import-form>` WC wires
+ * dynamic URL counting + per-URL status.
+ */
 export const ImportPage: FC<ImportPageProps> = ({ user, imported, error }) => {
   return (
     <SiteShell user={user} title="Import" bundle="/c/import.js">

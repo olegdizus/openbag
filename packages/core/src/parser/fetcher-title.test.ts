@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { parseHtml } from "@openbag/core";
 
-// Regression: HTMLRewriter is a streaming transformer — its handlers only fire
-// as the transformed Response body is consumed. parseHtml used to call
-// .transform() and discard the result, which meant the meta handlers fired
-// lazily (or not at all) and metadata fields like title came back empty. After
-// the fix, parseHtml awaits the transformed .text() so handlers are guaranteed
-// to run before the captured variables are read.
+/**
+ * Regression: HTMLRewriter is a streaming transformer — its handlers only fire
+ * as the transformed Response body is consumed. parseHtml used to call
+ * .transform() and discard the result, which meant the meta handlers fired
+ * lazily (or not at all) and metadata fields like title came back empty. After
+ * the fix, parseHtml awaits the transformed .text() so handlers are guaranteed
+ * to run before the captured variables are read.
+ */
 describe("parseHtml — title extraction", () => {
   it("returns the page <title> when present, even with no <h1>", async () => {
     const html = `<html><head><title>You Weren't Meant to Have a Boss</title></head><body>${"<p>body text </p>".repeat(20)}</body></html>`;

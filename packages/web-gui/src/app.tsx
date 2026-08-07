@@ -1,10 +1,3 @@
-// web-gui/src/app.tsx — the web-gui Worker Hono app.
-//
-// Server-rendered pages mounted at the root. Per ADR-0018 the web-gui Worker
-// shares D1 with the API Worker and reads data via `@openbag/core` directly
-// (no HTTP-mediated SSR → /api seam). Auth model: UI pages run under
-// `browserAuthMiddleware` (cookie session → 302 redirect to /login).
-
 import { Hono } from "hono";
 import { browserAuthMiddleware } from "./browser-auth";
 import { LoginPage } from "./pages/login";
@@ -17,14 +10,14 @@ import { ImportPage } from "./pages/import";
 import { homeRoute } from "./pages/home";
 import { uiActionRoutes } from "./actions";
 
-// Hono app with ambient Variables for `user` (set by browserAuthMiddleware).
-// `c.env` is the web-gui Worker bindings (DB + ASSETS + ALLOWED_REGISTRATION).
 interface AuthVars {
   user: { id: number; username: string };
 }
+/**
+ * ADR-0018: shares D1 with the API Worker and reads via @openbag/core
+ * directly (no HTTP SSR→/api seam). Auth: cookie session → 302 redirect to /login.
+ */
 export const uiApp = new Hono<{ Variables: AuthVars }>();
-
-// ---- Public routes (no auth) ----------------------------------------------
 
 uiApp.get("/", homeRoute);
 
@@ -52,8 +45,6 @@ uiApp.get("/signup", (c) =>
     />,
   ),
 );
-
-// ---- Authed routes --------------------------------------------------------
 
 uiApp.get("/entries", browserAuthMiddleware({ required: true }), async (c) => {
   const user = c.get("user") as { id: number; username: string };
@@ -94,6 +85,6 @@ uiApp.get("/import", browserAuthMiddleware({ required: true }), async (c) => {
   );
 });
 
-// ---- Form-POST mutation routes (PRG pattern, 303 → SSR page) --------------
+// /ui/* mutations issue 303 → SSR (PRG pattern).
 
 uiApp.route("/ui", uiActionRoutes());

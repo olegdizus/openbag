@@ -1,9 +1,3 @@
-// Password hashing & verification.
-//
-// Pure Web Crypto (PBKDF2/SHA-256, 100k iterations, 16-byte random salt).
-// No imports — safe to run in both the Cloudflare Workers runtime and Node 20+
-// (used by the out-of-band `scripts/create-user.ts` provisioning tool).
-
 const ITERATIONS = 100000;
 const KEY_BITS = 256;
 const SALT_BYTES = 16;
@@ -20,6 +14,11 @@ function fromHex(hex: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * PBKDF2/SHA-256 password hash (100k iterations, 16-byte random salt). Pure
+ * Web Crypto — safe to run in both the Cloudflare Workers runtime and Node 20+
+ * (used by the out-of-band `scripts/create-user.ts` provisioning tool).
+ */
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(

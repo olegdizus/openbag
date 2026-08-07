@@ -1,19 +1,6 @@
-// web-gui/src/actions.ts — POST handlers for browser form submissions.
-//
-// The UI progressively enhances each form (`<form method=post action="/ui/...">`),
-// so the server side has to support native HTML form posts as well. Each
-// handler:
-//   1. Verifies a session cookie (via `browserAuthMiddleware` at mount).
-//   2. Validates `Origin` (CSRF defense — `SameSite=Strict` already protects
-//      most cases; this guards against cross-origin navigational POSTs).
-//   3. Parses `application/x-www-form-urlencoded` / `multipart/form-data`.
-//   4. Mutates via `@openbag/core` (single source of truth).
-//   5. Issues a 303 (See Other) redirect back to the originating page so the
-//      browser does an immediate GET (PRG pattern).
-//
-// `/api/*` stays JSON-only (ADR-0011). Every mutation here funnels through
-// the same `@openbag/core` query helpers the `/api/*` Worker uses — same SQL,
-// same enrichment; no HTTP round-trip, no second-tier contract.
+// POST handlers for browser form submissions. The UI progressively enhances
+// each form (`<form method=post action="/ui/...">`), so the server side has to
+// support native HTML form posts as well.
 
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -45,7 +32,7 @@ interface AuthVars {
  */
 function requireSameOrigin(c: Context): Response | null {
   const origin = c.req.header("origin");
-  if (!origin) return null; // No Origin → curl/non-browser → allow.
+  if (!origin) return null; // non-browser (curl) — allow
   try {
     const originUrl = new URL(origin);
     const reqUrl = new URL(c.req.url);
@@ -66,39 +53,39 @@ async function parseForm<T = Record<string, any>>(c: Context): Promise<T> {
   return {} as T;
 }
 
+/**
+ * Returns the /ui/* sub-app. Pipeline: cookie session → Origin check (CSRF
+ * defense on top of SameSite=Strict) → form parse → mutate via @openbag/core
+ * (ADR-0011: /api/* stays JSON-only) → 303 back to the page.
+ */
 export function uiActionRoutes() {
   const app = new Hono<{ Variables: AuthVars }>();
   app.use("*", browserAuthMiddleware({ required: true }));
-
-  // ---- Settings -----------------------------------------------------------
 
   app.post("/settings", async (c) => {
     const forbidden = requireSameOrigin(c);
     if (forbidden) return forbidden;
     const user = c.get("user") as { id: number; username: string };
-    const body = await parseForm<{
+    const body = await parseForm < {
       theme?: string;
       items_per_page?: string;
       reading_speed?: string;
       language?: string;
-      action_mark_as_read?: string; // checkbox-on
+      action_mark_as_read?: string; // HTML checkboxes submit "on"
       list_mode?: string;
       display_thumbnails?: string;
-    }>(c);
+    }(c);
     await updateConfig(c.env, user.id, {
       theme: body.theme,
       items_per_page: body.items_per_page ? parseInt(body.items_per_page, 10) : undefined,
       reading_speed: body.reading_speed ? parseInt(body.reading_speed, 10) : undefined,
       language: body.language,
-      // Checkboxes submit their value only when checked; missing = off.
       action_mark_as_read: body.action_mark_as_read === "on" ? 1 : 0,
       list_mode: body.list_mode === "on" ? 1 : 0,
       display_thumbnails: body.display_thumbnails === "on" ? 1 : 0,
     });
     return c.redirect("/settings?success=1", 303);
   });
-
-  // ---- Feed token ---------------------------------------------------------
 
   app.post("/feed/token/rotate", async (c) => {
     const forbidden = requireSameOrigin(c);
@@ -115,8 +102,6 @@ export function uiActionRoutes() {
     await revokeFeedToken(c.env, user.id);
     return c.redirect("/settings", 303);
   });
-
-  // ---- Import -------------------------------------------------------------
 
   app.post("/import/single", async (c) => {
     const forbidden = requireSameOrigin(c);
@@ -135,8 +120,7 @@ export function uiActionRoutes() {
         url,
         title: body.title && body.title.trim() ? body.title.trim() : undefined,
       });
-      // Background fetch of article content is handled by `createEntry`'s
-      // `waitUntil`-deferred re-parse; no additional action needed here.
+      // `createEntry` re-parses asynchronously — don't trigger it again here.
       return c.redirect(`/entry?id=${entry.id}`, 303);
     } catch {
       return c.redirect("/import?error=" + encodeURIComponent("Could not create entry"), 303);
@@ -157,8 +141,6 @@ export function uiActionRoutes() {
     return c.redirect(`/import?imported=${results.length}`, 303);
   });
 
-  // ---- Tags ---------------------------------------------------------------
-
   app.post("/tags/delete", async (c) => {
     const forbidden = requireSameOrigin(c);
     if (forbidden) return forbidden;
@@ -171,8 +153,6 @@ export function uiActionRoutes() {
     return c.redirect("/tags", 303);
   });
 
-  // ---- OAuth clients ------------------------------------------------------
-
   app.post("/oauth/clients", async (c) => {
     const forbidden = requireSameOrigin(c);
     if (forbidden) return forbidden;
@@ -180,8 +160,7 @@ export function uiActionRoutes() {
     const body = await parseForm<{ name?: string }>(c);
     const name = (body.name || "").trim();
     if (!name) return c.redirect("/developer", 303);
-    // Browser-created clients get the same defaults the API used: no redirect
-    // URIs, password + refresh_token grants.
+    // Mirrors the API's defaults.
     await createClient(c.env, user.id, name, [], ["password", "refresh_token"]);
     return c.redirect("/developer", 303);
   });

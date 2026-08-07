@@ -2,9 +2,7 @@ import { fetchAndParse, D1Client } from "@openbag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 
-/**
- * Fetch and parse content for an entry, then update the DB.
- */
+// On failure, is_not_parsed is still cleared so the queue stops retrying.
 export async function refetchEntry(env: any, entryId: number, userId: number): Promise<void> {
   const entry = await db(env).one<{ id: number; url: string }>(
     "SELECT id, url FROM entries WHERE id = ? AND user_id = ?",
@@ -56,9 +54,6 @@ export async function refetchEntry(env: any, entryId: number, userId: number): P
   }
 }
 
-/**
- * Queue consumer handler for entry-refetch messages.
- */
 export async function handleEntryRefetch(messages: { body: any }[], env: any): Promise<void> {
   for (const msg of messages) {
     const { entryId, userId } = msg.body.payload || msg.body;

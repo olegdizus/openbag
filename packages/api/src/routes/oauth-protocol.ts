@@ -14,7 +14,6 @@ import {
 export function authRoutes() {
   const app = new Hono<{ Bindings: { DB: D1Database }; Variables: { user: { id: number; username: string } } }>();
 
-  // Wallabag-compatible token endpoint
   app.post("/oauth/v2/token", async (c) => {
     const contentType = c.req.header("content-type") || "";
     const body = contentType.includes("application/x-www-form-urlencoded")

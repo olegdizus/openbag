@@ -1,14 +1,3 @@
-// web-gui/src/pages/login.tsx — /login + /signup page.
-//
-// Renders both `#login-form` and `#signup-form` as REAL form POSTs to
-// `/api/auth/login|signup` — these hit the API Worker via the Cloudflare route
-// table (ADR-0018). JS enhancement (`/c/login.js`) intercepts and pre-applies
-// the session cookie by reading the JSON response, then handles redirects
-// client-side so error toasts work without a page reload.
-//
-// Signup section visibility is gated by `@openbag/core`'s
-// `isRegistrationEnabled(env)` — the no-JS HTML is statically correct.
-
 import { Html } from "../layout";
 import { isRegistrationEnabled } from "@openbag/core";
 import { esc } from "../render";
@@ -16,15 +5,22 @@ import type { FC } from "hono/jsx";
 
 interface LoginPageProps {
   env: any;
-  /** ?next=/entries — once the login/signup form posts to the API and the
-   *  browser is bounced to /, the home route detects the session and 302s
-   *  to /entries. For UX reasons, the form also sends a hidden `next` field
-   *  — read by /c/login.js when JS is on. */
+  /** Hidden field. Two bounce paths: API 401 → home route reads cookie → 302, OR /c/login.js reads this client-side. */
   next?: string;
   /** ?error=... query string (rendered as an inline alert). */
   error?: string;
 }
 
+/**
+ * Renders both `#login-form` and `#signup-form` as REAL form POSTs to
+ * `/api/auth/login|signup` — these hit the API Worker via the Cloudflare route
+ * table (ADR-0018). JS enhancement (`/c/login.js`) intercepts and pre-applies
+ * the session cookie by reading the JSON response, then handles redirects
+ * client-side so error toasts work without a page reload.
+ *
+ * Signup section visibility is gated by `@openbag/core`'s
+ * `isRegistrationEnabled(env)` — the no-JS HTML is statically correct.
+ */
 export const LoginPage: FC<LoginPageProps> = async ({ env, next = "/entries", error }) => {
   const registrationEnabled = isRegistrationEnabled(env);
   return (

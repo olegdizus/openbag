@@ -1,11 +1,6 @@
-// Browser-friendly auth endpoints — login, signup, logout.
-//
-// These live alongside worker/auth/routes.ts (the OAuth2 /oauth/v2/* routes
-// used by Wallabag native clients). The api/auth/* routes set/clear a signed
-// `session` cookie so the browser UI doesn't have to manage a bearer token.
-//
-// CSRF: SameSite=Strict + Origin check (see `requireSameOrigin`) covers all
-// mutating requests without needing a double-submit token.
+// Browser-friendly auth endpoints (login/signup/logout). The api/auth/*
+// routes set/clear a signed `session` cookie so the browser UI doesn't have
+// to manage a bearer token.
 
 import { Hono } from "hono";
 import {
@@ -22,7 +17,6 @@ import {
   SESSION_COOKIE,
 } from "@openbag/core";
 
-/** Parse a request body that may be JSON or form-urlencoded. */
 async function parseBody<T = Record<string, any>>(c: any): Promise<T> {
   const ct = (c.req.header("content-type") || "").toLowerCase();
   if (ct.includes("application/json")) {
@@ -43,7 +37,6 @@ async function parseBody<T = Record<string, any>>(c: any): Promise<T> {
   }
 }
 
-/** Read the `session` cookie value (if any) from a raw Cookie header. */
 function readSessionCookie(cookieHeader: string | undefined): string | undefined {
   if (!cookieHeader) return undefined;
   const match = cookieHeader.match(/(?:^|;\s*)session=([^;]+)/);
@@ -73,7 +66,6 @@ function requireSameOrigin(c: any): Response | null {
   }
 }
 
-/** Normalize a username (lowercase, trimmed, max length). */
 function normalizeUsername(s: unknown): string | null {
   if (typeof s !== "string") return null;
   const u = s.trim().toLowerCase().slice(0, 64);
@@ -81,11 +73,14 @@ function normalizeUsername(s: unknown): string | null {
 }
 
 /**
- * Returns the auth api sub-app. Mounted under `/api/auth` by `worker/api/index.ts`.
+ * Returns the auth api sub-app. Mounted under `/api/auth`.
  *
  * All three routes accept either application/json or
  * application/x-www-form-urlencoded so the static UI can POST a plain form
  * without needing a JSON helper.
+ *
+ * CSRF: SameSite=Strict + Origin check (see `requireSameOrigin`) covers all
+ * mutating requests without needing a double-submit token.
  */
 export function apiAuthRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database; ALLOWED_REGISTRATION?: string } }>();

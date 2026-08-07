@@ -1,11 +1,10 @@
-// worker/api/features/tags-queries.ts — shared data helpers for tags.
-//
-// Extracted from the original API handler (ADR-0014) so the UI tags page and
-// the API endpoint share one query path.
+// Shared data helpers for tags (ADR-0014). The UI tags page and the API
+// endpoint both go through these so they share one query path.
 
 import { D1Client } from "../db";
 import type { Tag } from "./entries";
 
+/** Tag with usage count (`GET /api/tags` enriched shape). */
 export interface TagWithCount extends Tag {
   nbEntries: number;
 }
@@ -23,14 +22,14 @@ export async function listTags(env: any, userId: number): Promise<TagWithCount[]
   );
 }
 
-/** Delete a tag by id (and unlink it from all entries). */
+/** Side-effect: deletes every `entry_tags` link first. */
 export async function deleteTag(env: any, userId: number, tagId: number): Promise<void> {
   const dbc = new D1Client(env.DB);
   await dbc.run("DELETE FROM entry_tags WHERE tag_id IN (SELECT id FROM tags WHERE id = ? AND user_id = ?)", [tagId, userId]);
   await dbc.run("DELETE FROM tags WHERE id = ? AND user_id = ?", [tagId, userId]);
 }
 
-/** Delete tags matching any of the given labels. Returns the deleted rows. */
+/** Returns the deleted tag rows (not just a count). */
 export async function deleteTagsByLabels(env: any, userId: number, labels: string[]): Promise<Tag[]> {
   const dbc = new D1Client(env.DB);
   const deleted: Tag[] = [];

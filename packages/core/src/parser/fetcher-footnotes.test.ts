@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { parseHtml } from "@openbag/core";
 
-// Regression for the broken footnote markup Readability produced on
-// paulgraham.com/boss.html (and similar `<br /><br />`-separated pages that
-// wrap inline elements). Without repair, the literal `[` got isolated into
-// its own <p>, which rendered as `[\n[1]() note text\n[` and confused
-// downstream HTML-to-Markdown converters into emitting `[1]()` link syntax.
+/**
+ * Regression for the broken footnote markup Readability produced on
+ * paulgraham.com/boss.html (and similar `<br /><br />`-separated pages that
+ * wrap inline elements). Without repair, the literal `[` got isolated into
+ * its own <p>, which rendered as `[\n[1]() note text\n[` and confused
+ * downstream HTML-to-Markdown converters into emitting `[1]()` link syntax.
+ */
 describe("parseHtml — repairSplitParagraphs", () => {
   it("merges a stray '[' paragraph into the following footnote paragraph", async () => {
     // Shape that Readability emits for `[<a name="f1n"><font>1</font></a>] note…`

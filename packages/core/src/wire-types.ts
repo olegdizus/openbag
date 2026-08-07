@@ -1,9 +1,5 @@
-// shared/types.ts — public types crossing the worker/ ↔ web-ui/ boundary.
-//
-// Anything imported by both `worker/` and `web-ui/` belongs here so the two
-// packages can compile independently. These types mirror the JSON wire shape
-// of `/api/*` (Wallabag-compatible), not the D1 row shape — that stays in
-// worker/ internal types.
+// Public types crossing the worker/ ↔ web-ui/ boundary. Mirrors the JSON wire
+// shape of `/api/*` (Wallabag-compatible), not the D1 row shape.
 
 /** Authenticated user; attached to Hono context and rendered into SSR shell. */
 export interface User {

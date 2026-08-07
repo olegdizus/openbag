@@ -1,12 +1,5 @@
-// web-ui/lib/api.ts — strict rewrite of web-ui/js/api.js's `window.api`.
-//
-// Same JSON-aware fetch() wrapper (credentials=include, 401 → bounce to login),
-// but FIXES the bug where wrong-password errors on /api/auth/login and
-// /api/auth/signup were swallowed because the 401-to-/login bounce happened
-// before the caller could show an inline error message.
-//
-// Used by every Phase-3 Web Component. The bundles in
-// `web-ui/c/<page>.js` re-export `api()` and `api.toast()`.
+// Fetch wrapper used by every WC. 401 → bounce to /login, EXCEPT on
+// /api/auth/login|signup (surfaced to the caller for inline error).
 
 interface ToastOptions {
   /** kind=success → green; anything else → red (default). */
@@ -30,8 +23,7 @@ function toast(msg: string, opts: ToastOptions = {}): void {
   el.className = `toast ${opts.ok ? "toast-success" : "toast-error"}`;
   el.textContent = msg;
   region.appendChild(el);
-  // Remove after the duration. The custom element ships its own animation
-  // (slide-in / fade-out) via CSS.
+  // WC ships the slide-in/out animation in CSS.
   window.setTimeout(() => {
     el.classList.add("toast-leave");
     window.setTimeout(() => el.remove(), 250);
@@ -44,15 +36,9 @@ interface FetchOpts {
   headers?: Record<string, string>;
 }
 
-/** If `path` is the auth endpoint, the 401-handler should NOT auto-bounce. */
 const AUTH_PATHS = new Set(["/api/auth/login", "/api/auth/signup"]);
 
-/**
- * Same contract as the legacy window.api(): returns parsed JSON (or text/null),
- * shows a toast on non-2xx, and throws. Crucially, 401s on /api/auth/login or
- * /api/auth/signup are NOT bounced — they're surfaced to the caller so the
- * login page can show the inline error.
- */
+/** Same contract as the legacy window.api(). */
 export async function api<T = any>(path: string, opts: FetchOpts = {}): Promise<T> {
   const fetchOpts: RequestInit = {
     method: opts.method || "GET",
@@ -103,14 +89,11 @@ export async function api<T = any>(path: string, opts: FetchOpts = {}): Promise<
 
   if (ct.includes("application/json")) return res.json() as Promise<T>;
   const text = await res.text();
-  // Empty body → null per the JSON contract; T may be a permissive type that
-  // the caller has passed, so cast through `unknown`.
   return (text === "" ? null : text) as unknown as T;
 }
 
 api.toast = toast;
 
-// Make accessible to non-bundled scripts while still exporting for esbuild.
 if (typeof window !== "undefined") {
   (window as any).api = api;
   (window as any).toast = toast;

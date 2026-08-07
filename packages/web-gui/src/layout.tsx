@@ -1,13 +1,5 @@
-// web-ui/layout.tsx — site shell + page primitives.
-//
-// `<SiteShell user navLinks title>` wraps page bodies in the <header>
-// (brand, nav, current user, logout) and </footer>. The shell is rendered
-// server-side with the resolved user — no client-side `/api/auth/me`
-// round-trip (replaces the legacy `web-ui/js/app.js` boot flow).
-//
-// All output is statically-generated HTML; nothing here requires JS. Buttons
-// that *do* need JS still render as plain anchors/forms so the no-JS path
-// works (Phase 3 progressively enhances them).
+// Site shell + page primitives. Everything degrades gracefully to no-JS —
+// interactive buttons render as anchors/forms first.
 
 import type { Child, FC } from "hono/jsx";
 import { rawHTML, esc } from "./render";
@@ -22,7 +14,7 @@ export interface NavLink {
   href: string;
 }
 
-/** Top-level navigation — matches the existing `web-ui/js/app.js` nav order. */
+/** Order mirrors the legacy `web-ui/js/app.js` nav. */
 export const NAV_LINKS: NavLink[] = [
   { label: "Entries", href: "/entries" },
   { label: "Tags", href: "/tags" },
@@ -33,8 +25,8 @@ export const NAV_LINKS: NavLink[] = [
 
 interface PageProps {
   title: string;
-  bundle?: string; // path to the page's bundled client JS, e.g. "/c/entry.js"
-  /** Inline CSS overrides (rare). The shared /css/app.css is always loaded. */
+  bundle?: string; // e.g. "/c/entry.js"
+  /** Always loaded alongside the shared /css/app.css. */
   inlineStyle?: string;
   bodyClass?: string;
   /** Extra <head> children (Open Graph tags, meta refresh, etc). */
@@ -42,10 +34,7 @@ interface PageProps {
   children: Child;
 }
 
-/**
- * Full HTML document shell. The body class drives narrow vs full-width pages
- * (mirrors `body.narrow` in `web-ui/public/css/app.css`).
- */
+/** The `bodyClass` prop drives `body.narrow` in /css/app.css. */
 export const Html: FC<PageProps> = (props) => {
   const { title, bundle, inlineStyle, bodyClass, headExtra, children } = props;
   return (
@@ -67,7 +56,7 @@ export const Html: FC<PageProps> = (props) => {
 interface SiteShellProps {
   user: User | null;
   title: string;
-  /** Body-only fragment for `<main>`. Don't include the shell / header here. */
+  /** Don't include shell/header here — body-only. */
   children: Child;
   bundle?: string;
   bodyClass?: string;
@@ -77,10 +66,8 @@ interface SiteShellProps {
 }
 
 /**
- * Standard authed page: <header><nav><user/></header><main>{children}</main>.
- * The logout button is a tiny form posting to `/api/auth/logout` so it works
- * with JS disabled. The `<logout-button>` WC (Phase 3) intercepts the click
- * for an instant redirect.
+ * Standard authed page. The logout button renders as a real `method=post`
+ * form for no-JS; the `<logout-button>` WC intercepts it when JS is on.
  */
 export const SiteShell: FC<SiteShellProps> = (props) => {
   const { user, title, children, bundle, bodyClass = "app-shell", headExtra, nav = true } = props;

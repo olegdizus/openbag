@@ -2,7 +2,7 @@
  * Content fetcher and parser for Cloudflare Workers.
  *
  * Uses fetch() + Cloudflare HTMLRewriter for fast metadata extraction,
- * then linkedom + @mozilla/readability for robust article content extraction.
+ * then linkedom + @mozilla/readability for body content extraction.
  */
 
 import { parseHTML } from "linkedom";
@@ -21,9 +21,6 @@ export interface ParsedContent {
   finalUrl: string;
 }
 
-/**
- * Fetch a URL and parse its content into a readable article.
- */
 export async function fetchAndParse(url: string): Promise<ParsedContent> {
   const res = await fetch(url, {
     redirect: "follow",
@@ -54,7 +51,7 @@ export async function parseHtml(html: string, url: string, contentType: string =
     try { return new URL(url).hostname; } catch { return ""; }
   })();
 
-  // --- Pass 1: metadata via HTMLRewriter (streaming, fast) ---
+  // Metadata via HTMLRewriter.
   let title = "";
   let h1 = "";
   let metaDescription = "";
@@ -112,7 +109,7 @@ export async function parseHtml(html: string, url: string, contentType: string =
   // so every handler has run before we read the captured variables below.
   await metaRewriter.transform(new Response(html)).text();
 
-  // --- Pass 2: content via linkedom + Readability ---
+  // Body via linkedom + Readability.
   let content = "";
   let excerpt = "";
   let byline = "";
@@ -131,45 +128,35 @@ export async function parseHtml(html: string, url: string, contentType: string =
     // Readability may throw on malformed/edge-case pages — fall back below
   }
 
-  // Fallback to legacy regex extraction if Readability returned nothing useful
+  // Regex fallback when Readability returned nothing.
   let usedReadability = !!content && contentTextLen >= 100;
   if (!usedReadability) {
     content = extractArticleContent(html);
   }
 
-  // Repair broken paragraph splits that Readability introduces on pages that
-  // separate blocks with `<br /><br />` while wrapping inline elements (a common
-  // pattern in older essays, e.g. paulgraham.com footnotes). Readability splits
-  // such blocks into separate <p> tags at boundaries where there is text on one
-  // side and an inline element on the other with no whitespace between them,
-  // isolating stray brackets like `[` into their own paragraph and orphaning the
-  // `<a>1</a>]` immediately after it. Re-join those fragments before cleaning.
-  // (Also applied to the legacy path for safety; it is a no-op when no orphan
-  // bracket paragraphs exist.)
+  // Readability splits `<br /><br />`-separated pages into orphan-bracket
+  // <p>s; rejoin them here (no-op when Readability didn't run).
   content = repairSplitParagraphs(content);
 
-  // Clean the final HTML for storage.
-  // Readability already sanitizes (no scripts/nav); only strip attributes to save space.
-  // The legacy fallback needs the full aggressive clean.
+  // The regex fallback wasn't pre-sanitized, so it gets the aggressive clean.
   content = usedReadability ? stripAttributes(content) : cleanHtml(content);
 
-  // Title: prefer <title>, then og:title, then the first <h1>, then Readability
   if (!title.trim() && ogTitle) title = ogTitle;
   if (!title.trim() && h1.trim()) title = h1;
   const finalTitle = title.trim();
 
-  // Calculate reading time (~200 words per minute) from cleaned content
+  // ~200 wpm: conservative end of average adult silent reading speed for
+  // non-technical prose (commonly cited 200–300 wpm). Standard baseline for
+  // read-it-later apps and the implicit default behind Wallabag's
+  // `reading_speed` user-config multiplier (=1).
   const plainText = content.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
   const wordCount = (contentTextLen || plainText.split(/\s+/).filter(Boolean).length);
   const readingTime = Math.max(1, Math.ceil(wordCount / 200));
 
-  // Excerpt: prefer meta description, then Readability excerpt
   const finalExcerpt = metaDescription || excerpt || plainText.slice(0, 200).trim();
 
-  // Authors: prefer meta[name=author], then Readability byline
   const finalAuthors = authorMeta || byline;
 
-  // Language
   const language = langAttr || detectLanguage(plainText);
 
   return {
@@ -186,10 +173,7 @@ export async function parseHtml(html: string, url: string, contentType: string =
   };
 }
 
-/**
- * Legacy fallback: extract article content using regex heuristics.
- * Used only when Readability fails to produce usable output.
- */
+/** Run only when Readability produces nothing. */
 function extractArticleContent(html: string): string {
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   let body = bodyMatch ? bodyMatch[1] : html;
@@ -197,10 +181,7 @@ function extractArticleContent(html: string): string {
   return body;
 }
 
-/**
- * Strip class, style, data-*, and on* attributes from HTML.
- * Applied to Readability output (which is already structurally clean).
- */
+/** Applied to Readability output (already structurally clean — only attr cleanup needed). */
 function stripAttributes(html: string): string {
   let clean = html;
   clean = clean.replace(/\s+on\w+="[^"]*"/gi, "");
@@ -210,10 +191,7 @@ function stripAttributes(html: string): string {
   return clean.trim();
 }
 
-/**
- * Clean HTML for storage: remove scripts, styles, comments, and inline attributes.
- * Used for the legacy regex fallback path where the HTML has not been curated by Readability.
- */
+/** Used for the regex-fallback path (raw HTML — no Readability curation). */
 function cleanHtml(html: string): string {
   let clean = html;
   clean = clean.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
@@ -275,9 +253,6 @@ function repairSplitParagraphs(html: string): string {
   return out;
 }
 
-/**
- * Simple language detection based on common words.
- */
 function detectLanguage(text: string): string {
   const lower = text.toLowerCase().slice(0, 500);
   if (/\b(the|and|is|are|was|were|have|has|been|will|would|could|should)\b/.test(lower)) return "en";

@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { parseHtml } from "@openbag/core";
 
-// Diagnostic: ensure HTMLRewriter handlers fire at all in this Workers runtime
-// test environment. If these all pass, title parsing itself is wired correctly.
+/**
+ * Diagnostic: ensure HTMLRewriter handlers fire at all in this Workers runtime
+ * test environment. If these all pass, title parsing itself is wired correctly.
+ */
 describe("HTMLRewriter title diagnostics", () => {
   it("captures <title> text", async () => {
     const html = `<html><head><title>My Title</title></head><body><p>${"body ".repeat(50)}</p></body></html>`;

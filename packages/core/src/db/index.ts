@@ -1,14 +1,13 @@
-// Thin wrapper over a D1 `prepare(...).bind(...).{all|first|run}()` chain.
-//
-// `D1Client` is the canonical D1 access seam — every query helper in
-// `@openbag/core` accepts a `D1Client` and uses these three methods. The
-// constructor takes a `D1Database` binding; `D1Database` ships ambient via
-// `@cloudflare/workers-types`, so no import is needed.
-
 export * from "./types";
 
+/**
+ * Thin wrapper over a D1 `prepare(...).bind(...).{all|first|run}()` chain.
+ * Canonical D1 access seam — every query helper in `@openbag/core` accepts a
+ * `D1Client` and uses these three methods. The constructor takes a `D1Database`
+ * binding (ambient via `@cloudflare/workers-types`, no import needed).
+ */
 export class D1Client {
-  constructor(private db: D1Database) {}
+  constructor(private db: D1Database) { }
 
   async all<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     const { results } = await this.db.prepare(sql).bind(...params).all();

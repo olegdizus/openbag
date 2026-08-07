@@ -1,7 +1,3 @@
-// Auth middleware — accepts Bearer tokens (Wallabag clients) and signed
-// `session` cookies (browser UI) indistinguishably. Either path attaches
-// `{ id, username }` to context and rejects with 401 otherwise.
-
 import { D1Client, lookupSession } from "@openbag/core";
 
 /** Read the `session` cookie value (if any) from a raw Cookie header. */
@@ -27,6 +23,11 @@ async function resolveBearerToken(
   );
 }
 
+/**
+ * Auth middleware — accepts Bearer tokens (Wallabag clients) and signed
+ * `session` cookies (browser UI) indistinguishably. Either path attaches
+ * `{ id, username }` to context and rejects with 401 otherwise.
+ */
 export function authMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     // Support Authorization: Bearer (clients), ?access_token= query param

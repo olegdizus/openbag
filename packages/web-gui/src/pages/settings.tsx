@@ -1,11 +1,3 @@
-// web-gui/src/pages/settings.tsx — GET /settings page.
-//
-// Server-side prefill via `@openbag/core` `getConfig` + `getFeedToken`
-// (D1 direct — ADR-0018). The preferences form POSTs to `/ui/settings`; the
-// token buttons are intercepted by the `<feed-token-actions>` WC when JS is
-// on (calls /api/feed/token for instant updates), but server-side they fall
-// back to `/ui/feed/token/*` POSTs.
-
 import { SiteShell, type User } from "../layout";
 import { getConfig, getFeedToken } from "@openbag/core";
 import { esc } from "../render";
@@ -14,13 +6,19 @@ import type { FC } from "hono/jsx";
 interface SettingsPageProps {
   user: User;
   env: any;
-  /** Origin for building feed-token URLs. The web-gui Worker knows the
-   *  request URL; we pass it explicitly to keep `@openbag/core` calls siteless. */
+  /** Passed explicitly so @openbag/core never needs the request URL. */
   baseUrl: string;
   /** ?success=1 query after a successful settings save. */
   success?: boolean;
 }
 
+/**
+ * Server-side prefill via `@openbag/core` `getConfig` + `getFeedToken`
+ * (D1 direct — ADR-0018). The preferences form POSTs to `/ui/settings`; the
+ * token buttons are intercepted by the `<feed-token-actions>` WC when JS is
+ * on (calls /api/feed/token for instant updates), but server-side they fall
+ * back to `/ui/feed/token/*` POSTs.
+ */
 export const SettingsPage: FC<SettingsPageProps> = async ({ user, env, baseUrl, success }) => {
   const cfg = await getConfig(env, user.id);
   const token = await getFeedToken(env, user.id, baseUrl);

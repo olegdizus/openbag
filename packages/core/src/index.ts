@@ -11,17 +11,15 @@
 //   @openbag/core/wire            — JSON wire shapes for /api/* (Entry, Tag, User, etc.)
 //   @openbag/core/db              — D1Client + Db row types (db User has password_hash etc.)
 
-// Database access (D1Client) — NOT the row types (those collide with wire types).
+// D1Client only — db/types intentionally not re-exported (collides with wire-types).
 export { D1Client } from "./db";
 
-// Crypto + sanitization.
 export { toHex, randomHex } from "./crypto";
 export { sanitizeEntryHtml, computeReadingTime } from "./sanitize";
 
-// Config (feature flags).
 export { isRegistrationEnabled } from "./config/feature-flags";
 
-// Session (opaque cookie-based browser sessions).
+// Session (opaque, sha256-persisted).
 export {
   SESSION_COOKIE,
   SESSION_TTL_SECONDS,
@@ -32,8 +30,7 @@ export {
   revokeSession,
 } from "./session";
 
-// Auth primitives.
-export { hashPassword, verifyPassword } from "./auth/password";
+export { hashPassword, verifyPassword } from "./auth/password",
 export {
   createUser,
   findUserByUsername,
@@ -44,7 +41,6 @@ export { findClient, createClient, listClients, deleteClient } from "./auth/clie
 export { createAccessToken, createRefreshToken } from "./auth/tokens";
 export { passwordGrant, refreshTokenGrant, exchangeAuthCode } from "./auth/grants";
 
-// Parser (fetch + parse + epub).
 export { fetchAndParse, parseHtml, type ParsedContent } from "./parser/fetcher";
 export { generateEpub, type EntryForEpub } from "./parser/epub";
 

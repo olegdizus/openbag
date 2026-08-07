@@ -1,16 +1,13 @@
-// web-ui/render.tsx — primitives shared across every page.
-//
-// `html()` is the only escape hatch for injecting untrusted HTML into JSX
-// output. Hono JSX auto-escapes string children; `rawHTML(html)` returns a
-// `HTMLEscaped`-marked string that bypasses it — used only for content the
-// server has already sanitized (`worker/sanitize.ts` runs on save).
+// Markup-safe primitives shared across every page.
 
 import { raw } from "hono/utils/html";
 import type { Child } from "hono/jsx";
 
 /**
- * Markup-safe passthrough. Use ONLY for already-sanitized HTML (e.g. entry
- * content that passed through `sanitizeEntryHtml` on save).
+ * Markup-safe passthrough for already-sanitized HTML (e.g. entry content that
+ * passed through `sanitizeEntryHtml` on save). This is the only escape hatch
+ * for injecting untrusted HTML into JSX output — Hono JSX auto-escapes string
+ * children; `rawHTML(html)` returns a `HTMLEscaped`-marked string that bypasses it.
  */
 export function rawHTML(html: string | null | undefined) {
   if (!html) return raw("");

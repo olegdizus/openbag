@@ -1,11 +1,3 @@
-// web-gui/src/pages/tags.tsx — GET /tags page.
-//
-// Fetches tags via `@openbag/core`'s `listTags` (D1 direct — ADR-0018). Renders
-// the tag list with per-row delete forms (POST /ui/tags/delete). The `<tag-row>`
-// WC dynamically confirms the delete and optimistically removes the row when
-// JS is on; without JS the form submit still works and the trailing 303 lands
-// the user back on /tags.
-
 import { SiteShell, type User } from "../layout";
 import { listTags } from "@openbag/core";
 import { esc } from "../render";
@@ -16,6 +8,13 @@ interface TagsPageProps {
   env: any;
 }
 
+/**
+ * Fetches tags via `@openbag/core`'s `listTags` (D1 direct — ADR-0018).
+ * Renders the tag list with per-row delete forms (POST /ui/tags/delete). The
+ * `<tag-row>` WC dynamically confirms the delete and optimistically removes
+ * the row when JS is on; without JS the form submit still works and the
+ * trailing 303 lands the user back on /tags.
+ */
 export const TagsPage: FC<TagsPageProps> = async ({ user, env }) => {
   const tags = await listTags(env, user.id);
   return (

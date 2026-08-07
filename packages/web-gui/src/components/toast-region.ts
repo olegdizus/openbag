@@ -1,9 +1,3 @@
-// web-ui/components/toast-region.ts — global toast output region.
-//
-// Each Phase-3 island dispatches `CustomEvent("app:toast", { detail: { msg, kind } })`.
-// This custom element listens once at document level and renders transient
-// toasts. Styled via /css/app.css. No JS in toast markup itself.
-
 const TOAST_EVENT = "app:toast";
 
 interface ToastDetail {
@@ -14,12 +8,16 @@ interface ToastDetail {
   duration?: number;
 }
 
+/**
+ * Listens for `app:toast` CustomEvents (`{ detail: { msg, kind } }`, dispatched
+ * by every WC island). Auto-dismiss; styled in /css/app.css.
+ */
 class ToastRegion extends HTMLElement {
   constructor() {
     super();
     this.addEventListener("click", (e) => {
       const t = (e.target as HTMLElement).closest<HTMLElement>(".toast");
-      if (t) t.remove(); // dismiss-on-click
+      if (t) t.remove();
     });
     document.addEventListener(TOAST_EVENT, (e) => {
       const detail = (e as CustomEvent<ToastDetail>).detail || { msg: "" };

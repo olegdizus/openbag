@@ -1,10 +1,9 @@
-// web-ui/components/tag-row.ts — `<tag-row>` island.
-//
-// Per-row delete confirm + optimiztic removal. Without JS, the server-rendered
-// <form action="/ui/tags/delete" method="post"> still 303s to /tags.
-
 import { api } from "../lib/api";
 
+/**
+ * `<tag-row>` — intercepts the delete form, confirms, optimistically removes
+ * the row, rolls back on error. No-JS form 303s to /tags.
+ */
 class TagRow extends HTMLElement {
   connectedCallback(): void {
     const form = this.querySelector<HTMLFormElement>('form[action="/ui/tags/delete"]');
@@ -15,7 +14,6 @@ class TagRow extends HTMLElement {
     e.preventDefault();
     const label = this.dataset.label || "";
     if (!window.confirm(`Delete tag '${label}' from all entries?`)) return;
-    // Optimistic dim.
     this.style.opacity = "0.5";
     try {
       await api(`/api/tag/label?tag=${encodeURIComponent(label)}`, { method: "DELETE" });

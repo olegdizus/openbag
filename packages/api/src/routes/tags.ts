@@ -6,7 +6,6 @@ const db = (env: any) => new D1Client(env.DB);
 export function tagRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database } }>();
 
-  // GET /api/tags — list all tags with nbEntries (Wallabag format)
   app.get("/", async (c) => {
     const user = c.get("user");
     const tags = await db(c.env).all(
@@ -21,18 +20,14 @@ export function tagRoutes() {
     return c.json(tags);
   });
 
-  // DELETE /api/tags/{tagId} — delete a tag (removes from all entries, then deletes orphan)
   app.delete("/:tagId", async (c) => {
     const user = c.get("user");
     const tagId = parseInt(c.req.param("tagId"));
-    // Remove from all entries
     await db(c.env).run("DELETE FROM entry_tags WHERE tag_id = ? AND tag_id IN (SELECT id FROM tags WHERE id = ? AND user_id = ?)", [tagId, tagId, user.id]);
-    // Delete the tag itself
     await db(c.env).run("DELETE FROM tags WHERE id = ? AND user_id = ?", [tagId, user.id]);
     return c.json({ id: tagId, label: "", slug: "" });
   });
 
-  // GET /api/tags/label — get tag by label
   app.get("/label", async (c) => {
     const user = c.get("user");
     const label = c.req.query("label");
@@ -41,7 +36,6 @@ export function tagRoutes() {
     return c.json(tag);
   });
 
-  // GET /api/tags/labels — get tags by labels
   app.get("/labels", async (c) => {
     const user = c.get("user");
     const labels = c.req.query("labels");
@@ -52,8 +46,7 @@ export function tagRoutes() {
     return c.json({ items: tags });
   });
 
-  // DELETE /api/tags/label — delete tags by labels (comma-separated)
-  // Accepts both query param ?tags=tag1,tag2 and body { tags: "tag1,tag2" }
+  // Accepts both ?tags=tag1,tag2 query param and { tags: "tag1,tag2" } body.
   app.delete("/label", async (c) => {
     const user = c.get("user");
     let tagsLabels = c.req.query("tags") || "";

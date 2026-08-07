@@ -1,8 +1,5 @@
-// worker/api/features/entries-queries.ts — shared data helpers for entries.
-//
-// Extracted from the original route handler (ADR-0014). The API routes in
-// `./index.ts` call these; the UI SSR pages in `worker/ui/server/pages/*`
-// call the same functions so both share one query path. Same SQL, same
+// Shared data helpers for entries (ADR-0014). The API routes and the UI SSR
+// pages both call these so both share one query path — same SQL, same
 // enrichment, same Wallabag-compatible field shape.
 
 import { D1Client } from "../db";
@@ -74,20 +71,18 @@ export interface EntryList {
   perPage: number;
 }
 
-/** Deterministic URL dedup key (hex of the URL bytes). */
+/** Hex of the URL bytes — stable dedup key. */
 export function hashUrl(url: string): string {
   return toHex(new TextEncoder().encode(url));
 }
 
-/** Split a tags value (comma-string or array) into trimmed labels. */
 export function parseTags(tags: unknown): string[] {
   if (typeof tags === "string") return tags.split(",").map((t) => t.trim()).filter(Boolean);
   if (Array.isArray(tags)) return (tags as string[]).map((t) => t.trim()).filter(Boolean);
   return [];
 }
 
-/** Find or create a tag for a user; returns the tag row. */
-/** Find or create a tag for a user; returns the tag row. */
+/** Find-or-create a tag — no error on collision. */
 export async function upsertTag(
   dbc: D1Client,
   userId: number,
@@ -105,7 +100,6 @@ export async function upsertTag(
   return tag;
 }
 
-/** Upsert each label and link it to the entry; returns the upserted tags. */
 export async function attachTags(
   dbc: D1Client,
   userId: number,
@@ -128,18 +122,16 @@ export async function getEntryTags(dbc: D1Client, entryId: number, userId: numbe
   );
 }
 
-/** Apply Wallabag-compatible field shape (booleans → 0/1, ISO datetimes, tags). */
+/** Wallabag contract: flags as 0/1 integers, not booleans. */
 export async function enrichEntry(dbc: D1Client, entry: any, userId: number): Promise<Entry> {
   if (!entry) return entry;
   entry.tags = await getEntryTags(dbc, entry.id, userId);
-  // Coerce flags to integers (Wallabag clients expect 0/1, not booleans).
   entry.is_archived = entry.is_archived ? 1 : 0;
   entry.is_starred = entry.is_starred ? 1 : 0;
   entry.is_public = entry.is_public ? 1 : 0;
   entry.is_not_parsed = entry.is_not_parsed ? 1 : 0;
   entry.user_name = null;
   entry.user_email = null;
-  // D1 stores "YYYY-MM-DD HH:MM:SS" — emit ISO 8601 (Wallabag format).
   for (const key of ["created_at", "updated_at", "published_at"]) {
     if (entry[key] && typeof entry[key] === "string") {
       entry[key] = entry[key].replace(" ", "T") + "+00:00";
@@ -148,10 +140,7 @@ export async function enrichEntry(dbc: D1Client, entry: any, userId: number): Pr
   return entry as Entry;
 }
 
-/**
- * Build the WHERE-clause fragment for the user / filter combo. Lifted verbatim
- * from the original `buildQuery` so list semantics stay identical.
- */
+/** Lifted verbatim from the original `buildQuery` so list semantics stay identical. */
 function buildWhere(userId: number, filters: ListFilters): { where: string; params: any[] } {
   const conditions: string[] = ["e.user_id = ?"];
   const params: any[] = [userId];
@@ -206,11 +195,7 @@ const SORT_MAP: Record<string, string> = {
   archived: "e.is_archived",
 };
 
-/**
- * List entries for `userId` with filters + pagination. Returns the same shape
- * as the API `_embedded.items` envelope minus the HAL links (UI doesn't need
- * them; API handler wraps them back on).
- */
+/** Same shape as the API `_embedded.items` (minus HAL links — API handler re-wraps them). */
 export async function getEntries(env: any, userId: number, filters: ListFilters = {}): Promise<EntryList> {
   const dbc = new D1Client(env.DB);
   const page = Math.max(1, filters.page ?? 1);
@@ -248,14 +233,12 @@ export async function getEntries(env: any, userId: number, filters: ListFilters 
   };
 }
 
-/** Single entry with tags. Returns `null` when not owned by `userId`. */
 export async function getEntry(env: any, userId: number, id: number): Promise<Entry | null> {
   const dbc = new D1Client(env.DB);
   const row = await dbc.one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, userId]);
   return row ? enrichEntry(dbc, row, userId) : null;
 }
 
-/** Update entry flags / fields; returns the refreshed entry, or null if missing. */
 export interface UpdateEntryPatch {
   title?: string;
   content?: string;
@@ -333,7 +316,7 @@ export async function updateEntry(
   return getEntry(env, userId, id);
 }
 
-/** Delete an entry owned by `userId`. No-op if missing. */
+/** No-op (not an error) when the entry doesn't exist. */
 export async function deleteEntry(env: any, userId: number, id: number): Promise<void> {
   const dbc = new D1Client(env.DB);
   await dbc.run("DELETE FROM entries WHERE id = ? AND user_id = ?", [id, userId]);
@@ -355,9 +338,8 @@ export interface CreateEntryInput {
 }
 
 /**
- * Create an entry (or return the existing one if the URL hash matches), then
- * attach tags. When no `content` is supplied, the entry is marked
- * `is_not_parsed = 1` and queued for refetch (`waitUntil` left to caller).
+ * Sets `is_not_parsed = 1` when no content; caller owns the `waitUntil`
+ * background re-parse. De-dupes by `url_hash` (returns the existing row).
  */
 export async function createEntry(env: any, userId: number, input: CreateEntryInput): Promise<Entry> {
   const dbc = new D1Client(env.DB);

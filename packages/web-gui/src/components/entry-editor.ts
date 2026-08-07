@@ -1,18 +1,3 @@
-// web-ui/components/entry-editor.ts — `<entry-editor data-id data-has-raw>`.
-//
-// Custom WYSIWYG editor built on the Selection/Range API and TreeWalker.
-// Replaces the deprecated `document.execCommand` toolbar from the old
-// web-ui/js/entry.js (ADR-0012). Server-side `sanitizeEntryHtml` is the source
-// of truth for safety — the editor just manipulates DOM inside contentEditable.
-//
-// Toolbar mirrors the original: P / H2 / H3 / Blockquote / Bold / Italic /
-// Underline / Link. Save → PATCH /api/entries/:id { content }. Discard →
-// POST /api/entries/:id/content/reset, then re-render.
-//
-// ~450 LOC. The article body is rendered SSR; on Edit click the WC switches the
-// contentEditable flag and injects the toolbar. Without JS, "Edit" 302s to
-// /entry/:id/edit (deferred to Phase 5 addendum).
-
 import { api } from "../lib/api";
 
 const BLOCK_TAGS = ["P", "H2", "H3", "BLOCKQUOTE"];
@@ -23,9 +8,8 @@ interface EditorStatus {
 }
 
 /**
- * Toolbar markup parsed once and cloned on each Edit click — the standard
- * `<template>` pattern. The `data-cmd` attribute on each button dispatches a
- * single delegated click handler rather than 8 per-button listeners.
+ * Parsed once at module load + cloned per-Edit. Buttons set `data-cmd`; one
+ * delegated click handler dispatches (vs the legacy 8-listener pattern).
  */
 const TOOLBAR_TEMPLATE = (() => {
   const t = document.createElement("template");
@@ -48,11 +32,15 @@ const TOOLBAR_TEMPLATE = (() => {
   return t;
 })();
 
-/** Map `data-cmd` → toolbar action. Defined once so clones share the same dispatch. */
 type ToolbarCmd = "p" | "h2" | "h3" | "blockquote" | "strong" | "em" | "u" | "link" | "reset" | "save";
 
 const CMD_TAG: Record<string, string> = { p: "P", h2: "H2", h3: "H3", blockquote: "BLOCKQUOTE" };
 
+/**
+ * `<entry-editor>` — contentEditable WYSIWYG (replaces deprecated
+ * `document.execCommand`, ADR-0012). Server-side `sanitizeEntryHtml` is the
+ * source of truth for safety.
+ */
 class EntryEditor extends HTMLElement {
   private editing = false;
   private toolbar: HTMLElement | null = null;
@@ -90,12 +78,7 @@ class EntryEditor extends HTMLElement {
     if (this.editButton) this.editButton.style.display = "none";
   };
 
-  /**
-   * Clone the shared `<template>` and register a SINGLE delegated click handler
-   * that switches on `data-cmd`. Cheaper (one listener vs. 8), more cacheable
-   * (markup parsed once at module load), and easier to extend than the legacy
-   * `addBtn(label, title, fn)` helper it replaces.
-   */
+  /** Clones the shared template + wires a single delegated click handler. */
   private buildToolbar(): HTMLElement {
     const bar = TOOLBAR_TEMPLATE.content.firstElementChild!.cloneNode(true) as HTMLElement;
     this.status = bar.querySelector<HTMLElement>(".edit-status");
@@ -131,16 +114,12 @@ class EntryEditor extends HTMLElement {
     }
   };
 
-  // --- Range helpers -------------------------------------------------------
-
-  /** Returns the live Selection (or null if not available). */
   private getRange(): Range | null {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return null;
     return sel.getRangeAt(0);
   }
 
-  /** True when the selection starts and ends inside `editor`. */
   private selectionIsInEditor(editor: HTMLElement): boolean {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return false;
@@ -148,13 +127,9 @@ class EntryEditor extends HTMLElement {
     return editor.contains(r.startContainer) && editor.contains(r.endContainer);
   }
 
-  // --- Inline wrapping (Bold/Italic/Underline) -----------------------------
-
   /**
-   * Wrap the current selection in `<${tagName}>`. Uses Range.surroundContents
-   * when the selection stays inside a single text node; falls back to a
-   * TreeWalker that splits the selection into spans across block boundaries
-   * (surroundContents throws when the range partially spans a non-text node).
+   * Range.surroundContents throws when the range partially spans a non-text
+   * node — fall back to a TreeWalker that splits + wraps each text fragment.
    */
   private wrapInline(tagName: string): void {
     const editor = this.contentEl;
@@ -205,19 +180,16 @@ class EntryEditor extends HTMLElement {
     let n: Node | null;
     while ((n = walker.nextNode()) != null) {
       if (n.nodeType === Node.TEXT_NODE) {
-        // Filter out empty-text tails again.
+        // Drop 0-length tails (TreeWalker yields them on edge ranges).
         if ((n as Text).length > 0) out.push(n as Text);
       }
     }
     return out;
   }
 
-  // --- Block wrapping (P / H2 / H3 / Blockquote) ---------------------------
-
   /**
-   * Replace the closest block-level ancestor of the selection with a new
-   * element of `tagName`. Children are preserved; selection is restored to a
-   * sensible position inside the new element.
+   * Re-wrap the closest block-level ancestor as `<${tagName}>`. Children are
+   * preserved; selection restored inside the new element.
    */
   private wrapBlock(tagName: string): void {
     const editor = this.contentEl;
@@ -241,7 +213,6 @@ class EntryEditor extends HTMLElement {
     this.setStatus({ ok: true, msg: "" });
   }
 
-  /** Find the nearest block-level element inside `editor`. */
   private closestBlock(editor: HTMLElement, node: Node): HTMLElement | null {
     let n: Node | null = node;
     while (n && n !== editor) {
@@ -250,11 +221,8 @@ class EntryEditor extends HTMLElement {
       }
       n = n.parentNode;
     }
-    // No wrapping block — treat a top-level text run as a paragraph.
     return null;
   }
-
-  // --- Link insertion ------------------------------------------------------
 
   private onLink = (): void => {
     const editor = this.contentEl;
@@ -295,8 +263,6 @@ class EntryEditor extends HTMLElement {
     this.setStatus({ ok: true, msg: "" });
   };
 
-  // --- Save / Reset --------------------------------------------------------
-
   private onSave = async (): Promise<void> => {
     const editor = this.contentEl;
     if (!editor) return;
@@ -335,8 +301,6 @@ class EntryEditor extends HTMLElement {
       this.setStatus({ ok: false, msg: (e as Error).message || "Reset failed" });
     }
   };
-
-  // --- Utilities -----------------------------------------------------------
 
   private cleanup(): void {
     if (this.toolbar) {

@@ -1,5 +1,3 @@
-// Logging middleware
-
 export function loggingMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     const start = Date.now();

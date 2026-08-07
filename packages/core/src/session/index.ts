@@ -1,19 +1,15 @@
 // Session management — opaque session ids stored in a `sessions` table.
-//
 // Replaces the former forgeable `session=<urlencoded_username>` cookie. The
 // cookie value is now a 32-byte hex secret; only its sha256 is persisted in
 // D1, so a DB leak cannot forge a valid browser session.
-//
-// Three operations: create, lookup (used per-request by auth middleware),
-// revoke (logout). Plus `clearSessionCookie` for the logout response.
 
 import { D1Client } from "../db";
 import { toHex, randomHex } from "../crypto";
 
-/** Cookie name. Keep stable so logout works across the rollout. */
+/** Don't rename — existing rolled-out sessions depend on this string. */
 export const SESSION_COOKIE = "session";
 
-/** Session lifetime in seconds (30 days, mirrors the cookie Max-Age). */
+/** Must match the cookie Max-Age (see buildSessionCookie). */
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 2592000
 
 /** sha256(id) as lowercase hex; what we actually persist as `token_hash`. */
@@ -22,14 +18,13 @@ async function hashToken(token: string): Promise<string> {
   return toHex(new Uint8Array(digest));
 }
 
-/** Builds the `Set-Cookie` header value for a freshly issued session id. */
 export function buildSessionCookie(id: string): string {
   // HttpOnly + Secure + SameSite=Strict keeps the cookie JS-invisible and
   // cross-site-proof. Same-origin Pages+Worker routing means no Domain attr.
   return `${SESSION_COOKIE}=${id}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_TTL_SECONDS}`;
 }
 
-/** Builds the cookie-clearing header value used on logout. */
+/** Logout: Max-Age=0 expires the cookie at the client. */
 export function buildExpiredCookie(): string {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
 }

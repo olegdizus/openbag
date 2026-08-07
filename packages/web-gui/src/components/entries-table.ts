@@ -1,11 +1,3 @@
-// web-ui/components/entries-table.ts — `<entries-table>` island.
-//
-// Progressive enhancement: intercepts filter/pagination link clicks, pushes
-// the new URL via history.pushState, re-fetches via GET /api/entries, and
-// swaps the table body. Without JS the SSR links work natively.
-//
-// Reads data-* attrs (none today; reserved for future "compact mode").
-
 import { api } from "../lib/api";
 
 interface StoredEntry {
@@ -45,9 +37,13 @@ function rowsHtml(items: StoredEntry[]): string {
     .join("");
 }
 
+/**
+ * `<entries-table>` — intercepts filter/pagination clicks → pushState →
+ * re-fetch via /api/entries → swaps `<tbody>`. data-* attrs reserved for
+ * future "compact mode".
+ */
 class EntriesTable extends HTMLElement {
   connectedCallback(): void {
-    // Only override link clicks when JS is enabled.
     this.ownerDocument.documentElement.addEventListener("click", this.onClick);
     window.addEventListener("popstate", this.onPopState);
   }
@@ -61,10 +57,6 @@ class EntriesTable extends HTMLElement {
     const link = target?.closest<HTMLAnchorElement>("a[href]");
     if (!link) return;
     const href = link.getAttribute("href") || "";
-    // Only intercept same-origin /entries, /entry, /tags, /import, /settings, /developer,
-    // /api/entries — filter/pagination only kicks in for navigation that would
-    // refresh the entries table.
-    if (!href.startsWith("/entries") && !href.startsWith("/")) return;
     if (!href.startsWith("/entries")) return;
     e.preventDefault();
     const nextUrl = href;
@@ -80,7 +72,6 @@ class EntriesTable extends HTMLElement {
     try {
       const u = new URL(url, location.origin);
       const apiQ = new URLSearchParams(u.search);
-      // Pull only the params the API cares about; rest are UX-only.
       const keep = ["page", "perPage", "archive", "starred", "sort", "order"];
       const cleaned = new URLSearchParams();
       for (const k of keep) {
@@ -93,7 +84,6 @@ class EntriesTable extends HTMLElement {
       );
       const body = this.querySelector("tbody");
       if (body) body.innerHTML = rowsHtml(data._embedded?.items ?? []);
-      // Also update the page-shell pagination markers.
       const pager = document.querySelector(".pagination");
       if (pager) pager.scrollIntoView({ block: "nearest" });
     } catch (e) {

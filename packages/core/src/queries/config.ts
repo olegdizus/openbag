@@ -1,10 +1,11 @@
-// worker/api/features/config-queries.ts — shared data helpers for user_config.
-//
-// Extracted from the API handler (ADR-0014) so the UI settings page and the
-// API endpoint share one query path.
+// Shared data helpers for user_config (ADR-0014).
 
 import { D1Client } from "../db";
 
+/**
+ * User-config row. The UI settings page and the API endpoint both read/write
+ * it through these helpers so they share one query path.
+ */
 export interface UserConfig {
   theme: string;
   items_per_page: number;
@@ -31,7 +32,6 @@ function asFlag(v: unknown): number | undefined {
   return undefined;
 }
 
-/** Coerce to a positive integer, or undefined to skip. */
 function asPositiveInt(v: unknown): number | undefined {
   const n = typeof v === "number" ? v : parseInt(String(v), 10);
   if (!Number.isFinite(n) || n <= 0) return undefined;
@@ -48,7 +48,7 @@ export interface ConfigPatch {
   display_thumbnails?: boolean | number | string;
 }
 
-/** Persist any of the 7 user_config fields; returns the refreshed row. */
+/** Returns the refreshed row (omitting unchanged fields). */
 export async function updateConfig(env: any, userId: number, patch: ConfigPatch): Promise<UserConfig | null> {
   const dbc = new D1Client(env.DB);
   const sets: string[] = [];

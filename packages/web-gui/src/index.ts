@@ -1,12 +1,8 @@
-// @openbag/web-gui Worker entrypoint. Owns HTML routes (/ /entries /entry
-// /settings /tags /import /developer), the /ui/* form-POST mutations
-// (ADR-0014), and the static-asset ASSETS binding. Shares the same D1
-// `database_id` as packages/api but lives in a separate Cloudflare Worker
-// with a separate deploy revision.
+// @openbag/web-gui Worker. Sibling to packages/api (separate deploy, same D1).
+// ADR-0014 holds the /ui/* mutation contract.
 
 import { uiApp } from "./app";
 
-// Re-exported for direct drive in tests.
 export { uiApp };
 
 export default {
@@ -14,4 +10,3 @@ export default {
     return uiApp.fetch(request, env, ctx);
   },
 };
-

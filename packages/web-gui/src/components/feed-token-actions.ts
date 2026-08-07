@@ -1,11 +1,9 @@
-// web-ui/components/feed-token-actions.ts — `<feed-token-actions>` island.
-//
-// 3-button enhancement: instant feed-token refresh/rotate/revoke via
-// /api/feed/token (GET/POST/DELETE). Without JS the server-rendered
-// <form action="/ui/feed/token/*"> POSTs work natively.
-
 import { api } from "../lib/api";
 
+/**
+ * `<feed-token-actions>` — JS path: GET/POST/DELETE /api/feed/token for
+ * instant refresh/rotate/revoke. Server fallback: /ui/feed/token/* POSTs.
+ */
 class FeedTokenActions extends HTMLElement {
   connectedCallback(): void {
     this.render();
@@ -38,7 +36,6 @@ class FeedTokenActions extends HTMLElement {
       '<button type="button" data-action="rotate">Rotate</button> ' +
       '<button type="button" class="btn-danger" data-action="revoke">Revoke</button>';
 
-    // Replace existing children so re-render (after rotate) is clean.
     this.innerHTML = "";
     this.appendChild(out);
     this.appendChild(controls);

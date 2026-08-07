@@ -1,16 +1,3 @@
-/**
- * Generate EPUB files from entry content.
- * 
- * EPUB 3 structure:
- * - mimetype (uncompressed)
- * - META-INF/container.xml
- * - OEBPS/content.opf
- * - OEBPS/toc.ncx
- * - OEBPS/toc.xhtml
- * - OEBPS/chapter1.xhtml
- * - OEBPS/style.css
- */
-
 export interface EntryForEpub {
   id: number;
   title: string;
@@ -43,29 +30,23 @@ function mimeFromUrl(url: string): string {
     // Check for format hints in query params (e.g. ?format=png)
     const fmt = new URL(url, "https://example.com").searchParams.get("format");
     if (fmt && IMAGE_MIME[fmt]) return IMAGE_MIME[fmt];
-  } catch {}
-  return "image/jpeg"; // default
+  } catch { }
+  return "image/jpeg";
 }
 
-/**
- * Fetch images from HTML content and replace URLs with data URIs for offline reading.
- */
+/** Inline images as data: URIs so the EPUB works offline. */
 async function inlineImages(html: string, fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): Promise<string> {
   const imgRegex = /<img\s[^>]*src="([^"]+)"[^>]*>/gi;
   const matches = [...html.matchAll(imgRegex)];
   if (matches.length === 0) return html;
 
-  // Deduplicate URLs
   const urlSet = [...new Set(matches.map((m) => m[1]))];
   const urlToDataUri = new Map<string, string>();
 
-  // Fetch all images in parallel (max 5 concurrent)
   const results = await Promise.allSettled(
     urlSet.map(async (url) => {
       try {
-        // Skip data URIs and SVG inline
         if (url.startsWith("data:")) return;
-        // Only fetch http(s)
         if (!url.startsWith("http://") && !url.startsWith("https://")) return;
 
         const doFetch = fetchFn || globalThis.fetch;
@@ -79,7 +60,6 @@ async function inlineImages(html: string, fetchFn?: (input: RequestInfo | URL, i
         if (!mime.startsWith("image/")) return;
 
         const buf = await resp.arrayBuffer();
-        // Cap at 2MB per image
         if (buf.byteLength > 2 * 1024 * 1024) return;
 
         const base64 = btoa(
@@ -87,25 +67,19 @@ async function inlineImages(html: string, fetchFn?: (input: RequestInfo | URL, i
         );
         urlToDataUri.set(url, `data:${mime};base64,${base64}`);
       } catch {
-        // Silently skip failed images
       }
     })
   );
 
-  // Replace URLs in HTML
   let result = html;
   for (const [url, dataUri] of urlToDataUri) {
-    // Escape special regex chars in URL
     const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     result = result.replace(new RegExp(`src="${escaped}"`, "g"), `src="${dataUri}"`);
   }
   return result;
 }
 
-/**
- * Generate an EPUB file as an ArrayBuffer from an entry.
- * Now async to fetch and inline images for offline reading.
- */
+/** Async — fetches and inlines images before zipping. */
 export async function generateEpub(entry: EntryForEpub, fetchFn?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): Promise<ArrayBuffer> {
   const files: { path: string; data: Uint8Array; compressed: boolean }[] = [];
   const uid = `urn:uuid:${crypto.randomUUID()}`;
@@ -121,7 +95,6 @@ export async function generateEpub(entry: EntryForEpub, fetchFn?: (input: Reques
     compressed: false,
   });
 
-  // META-INF/container.xml
   files.push({
     path: "META-INF/container.xml",
     data: new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
@@ -133,7 +106,6 @@ export async function generateEpub(entry: EntryForEpub, fetchFn?: (input: Reques
     compressed: true,
   });
 
-  // OEBPS/style.css
   files.push({
     path: "OEBPS/style.css",
     data: new TextEncoder().encode(`body {
@@ -155,8 +127,6 @@ td, th { border: 1px solid #ccc; padding: 0.3em 0.5em; }
     compressed: true,
   });
 
-  // OEBPS/chapter1.xhtml — the article content
-  // Fetch and inline images for offline reading
   const contentWithImages = await inlineImages(entry.content || "", fetchFn);
   const htmlContent = cleanContentForEpub(contentWithImages);
   files.push({
@@ -179,7 +149,6 @@ td, th { border: 1px solid #ccc; padding: 0.3em 0.5em; }
     compressed: true,
   });
 
-  // OEBPS/content.opf
   files.push({
     path: "OEBPS/content.opf",
     data: new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
@@ -205,7 +174,6 @@ td, th { border: 1px solid #ccc; padding: 0.3em 0.5em; }
     compressed: true,
   });
 
-  // OEBPS/toc.ncx
   files.push({
     path: "OEBPS/toc.ncx",
     data: new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
@@ -227,7 +195,7 @@ td, th { border: 1px solid #ccc; padding: 0.3em 0.5em; }
     compressed: true,
   });
 
-  // OEBPS/toc.xhtml (EPUB 3 navigation document)
+  // toc.xhtml — EPUB 3 navigation document.
   files.push({
     path: "OEBPS/toc.xhtml",
     data: new TextEncoder().encode(`<?xml version="1.0" encoding="UTF-8"?>
@@ -261,39 +229,33 @@ function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-/**
- * Clean HTML content for EPUB: strip problematic elements.
- */
 function cleanContentForEpub(html: string): string {
   let clean = html;
 
-  // Remove script/style/noscript blocks
   clean = clean.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
   clean = clean.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
   clean = clean.replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, "");
 
-  // Remove event handlers (on*)
   clean = clean.replace(/\s+on\w+="[^"]*"/gi, "");
 
-  // Remove data-* attributes — both quoted and boolean (valueless) forms
+  // data-* attrs — both quoted and valueless forms (the `?` group).
   clean = clean.replace(/\s+data-[a-z][-a-z0-9]*(?:="[^"]*")?/gi, "");
 
-  // Remove other common XHTML-incompatible attributes
+  // Other XHTML-incompatible attributes.
   clean = clean.replace(/\s+(?:aria-[a-z-]+|role|tabindex|loading|decoding|fetchpriority|crossorigin|integrity)(?:="[^"]*")?/gi, "");
 
-  // Fix void elements for XHTML compatibility
+  // XHTML requires self-closing void elements.
   clean = clean.replace(/<br>/gi, "<br/>");
   clean = clean.replace(/<hr>/gi, "<hr/>");
   clean = clean.replace(/<img([^>]*)(?<!\/)>/gi, "<img$1/>");
 
-  // Remove inline SVGs (often contain invalid XHTML)
+  // Inline SVGs frequently break XHTML parsing.
   clean = clean.replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, "");
 
   return clean;
 }
 
-// ─── Minimal ZIP builder ────────────────────────────────────────────────────
-// We can't use JSZip or similar in Workers, so we build the ZIP binary manually.
+// Minimal ZIP builder — Workers has no JSZip, so we emit the bytes by hand:
 // ZIP format: [local file headers] + [central directory] + [end of central directory]
 
 const crc32Table = (() => {
@@ -316,12 +278,7 @@ function crc32(data: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-/**
- * Simple deflate-less ZIP builder.
- * For uncompressed entries, stores data as-is.
- * For compressed entries, uses raw STORE (no deflate).
- * Most EPUB readers accept STORE-only ZIPs.
- */
+/** STORE-only (no deflate) — every EPUB reader we tested accepts these. */
 function buildZip(files: { path: string; data: Uint8Array; compressed: boolean }[]): ArrayBuffer {
   const encoder = new TextEncoder();
   const localHeaders: Uint8Array[] = [];

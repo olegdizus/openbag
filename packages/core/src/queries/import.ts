@@ -1,10 +1,7 @@
-// worker/api/features/import-queries.ts — shared helpers for entry creation.
-//
-// Thin wrapper around `createEntry` from the entries queries module — the
-// "import" feature is conceptually just a bulk entry create. The legacy
-// `importRoutes()` handled file uploads (NiLB-form data); the UI import page
-// doesn't need that path, so this module exposes just URL-based single+bulk
-// creates plus a convenience hash lookup (linked to the entries table).
+// Shared helpers for entry creation (ADR-0014). Thin wrapper around
+// `createEntry` from the entries queries module — "import" is conceptually
+// just bulk create. The legacy file-upload path isn't needed by the UI, so
+// this module exposes just URL-based single+bulk creates plus a hash lookup.
 
 import { D1Client } from "../db";
 import { createEntry, hashUrl, type Entry } from "./entries";

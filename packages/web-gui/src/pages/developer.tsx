@@ -1,10 +1,3 @@
-// web-gui/src/pages/developer.tsx — GET /developer OAuth client page.
-//
-// Fetches OAuth clients via `@openbag/core` `listClients` (D1 direct).
-// The create form is a real `<form action="/ui/oauth/clients" method=post>` so
-// no-JS works; the `<oauth-client-card>` WC progressively enhances each card
-// with confirm dialogs + optimistic delete.
-
 import { SiteShell, type User } from "../layout";
 import { listClients } from "@openbag/core";
 import { esc } from "../render";
@@ -15,7 +8,7 @@ interface DeveloperPageProps {
   env: any;
 }
 
-/** Format the redirect_uris / allowed_grant_types columns as a comma list. */
+/** Coerces JSON-encoded redirect_uris / allowed_grant_types columns. */
 function fmtList(v: unknown): string {
   if (v == null) return "[]";
   let a: unknown;
@@ -27,6 +20,12 @@ function fmtList(v: unknown): string {
   return Array.isArray(a) ? a.join(", ") : JSON.stringify(v);
 }
 
+/**
+ * GET /developer. Fetches OAuth clients via `@openbag/core` `listClients`
+ * (D1 direct). The create form is a real `<form action="/ui/oauth/clients"
+ * method=post>` so no-JS works; the `<oauth-client-card>` WC progressively
+ * enhances each card with confirm dialogs + optimistic delete.
+ */
 export const DeveloperPage: FC<DeveloperPageProps> = async ({ user, env }) => {
   const clients = await listClients(env, user.id);
   return (

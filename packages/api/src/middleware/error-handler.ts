@@ -1,5 +1,3 @@
-// Error handling middleware
-
 export function errorMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     try {

@@ -1,13 +1,6 @@
-// Browser auth middleware — resolves the signed `session` cookie by calling
-// `@openbag/core`'s `lookupSession` directly (D1 lookup, no HTTP round-trip).
-//
-// Per ADR-0018 the web-gui Worker reads D1 directly via `@openbag/core`,
-// matching the API Worker's data path. The previous implementation went
-// through `GET /api/auth/me`; that HTTP-mediated pattern is dead.
-//
-// Counterpart to `authMiddleware` (in `packages/api/src/middleware/auth.ts`),
-// which is JSON-only and returns 401 on failure for Wallabag clients. The
-// two coexist in *different* Workers (ADR-0012 reinforced by ADR-0018):
+// Browser auth middleware — counterpart to `authMiddleware` (in
+// packages/api/src/middleware/auth.ts), which is JSON-only and returns 401 on
+// failure for Wallabag clients. The two coexist in different Workers:
 //   - `authMiddleware`        → /api/* (JSON 401 on missing session)  ← API Worker
 //   - `browserAuthMiddleware` → UI routes (302 → /login?next=<path>)  ← web-gui Worker
 

@@ -1,11 +1,9 @@
-// web-ui/components/oauth-client-card.ts — `<oauth-client-card>` island.
-//
-// Per-card delete-confirm enhancement: intercepts the rendered form's submit,
-// confirms, optimistically removes the card, rolls back on error. Without JS
-// the form submits natively (303 → /developer).
-
 import { api } from "../lib/api";
 
+/**
+ * `<oauth-client-card>` — intercepts the delete form, confirms, optimistically
+ * + rolls back on error. No-JS path: the form 303s to /developer.
+ */
 class OAuthClientCard extends HTMLElement {
   connectedCallback(): void {
     const form = this.querySelector<HTMLFormElement>(`form[action^="/ui/oauth/clients/"]`);
@@ -18,7 +16,6 @@ class OAuthClientCard extends HTMLElement {
     if (!window.confirm("Delete this OAuth client?")) return;
     const id = parseInt(this.dataset.id || "", 10);
     if (!id) return;
-    // Optimistic removal.
     this.style.opacity = "0.5";
     try {
       await api(`/api/oauth/clients/${id}`, { method: "DELETE" });

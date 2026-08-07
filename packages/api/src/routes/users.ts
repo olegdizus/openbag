@@ -6,14 +6,12 @@ const db = (env: any) => new D1Client(env.DB);
 export function userRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database } }>();
 
-  // GET /api/user — get current user info
   app.get("/user", async (c) => {
     const user = c.get("user");
     const info = await getUserInfo(c.env, user.id);
     return c.json(info);
   });
 
-  // PUT /api/user — update current user
   app.put("/user", async (c) => {
     const user = c.get("user");
     const body = await c.req.json();

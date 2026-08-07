@@ -1,12 +1,6 @@
-// web-gui/src/pages/entry.tsx — GET /entry?id=N reader view.
-//
-// Renders <article> with title, meta, tags, sanitized content (already-sanitized
-// HTML is safe to inject via `dangerouslySetInnerHTML`). Fetches the entry via
-// `@openbag/core`'s `getEntry` (D1 direct — ADR-0018).
-
 import { SiteShell, type User } from "../layout";
 import { getEntry } from "@openbag/core";
-import { esc, fmtDateTime, rawHTML } from "../render";
+import { esc, fmtDateTime } from "../render";
 import type { FC } from "hono/jsx";
 
 interface EntryPageProps {
@@ -16,6 +10,11 @@ interface EntryPageProps {
   id: number;
 }
 
+/**
+ * Renders <article> with title, meta, tags, sanitized content (already-sanitized
+ * HTML is safe to inject via `dangerouslySetInnerHTML`). Fetches the entry via
+ * `@openbag/core`'s `getEntry` (D1 direct — ADR-0018).
+ */
 export const EntryPage: FC<EntryPageProps> = async ({ user, env, id }) => {
   const e = await getEntry(env, user.id, id);
   if (!e) {
@@ -28,9 +27,7 @@ export const EntryPage: FC<EntryPageProps> = async ({ user, env, id }) => {
     );
   }
 
-  // `<meta http-equiv="refresh">` is the no-JS fallback for re-fetch pending
-  // entries. The `<entry-poller>` WC (Phase 3) replaces this with a clean
-  // 2s polling loop when JS is on.
+  // no-JS fallback for `is_not_parsed` entries.
   const headExtra = e.is_not_parsed ? (
     <meta http-equiv="refresh" content="5" />
   ) : null;

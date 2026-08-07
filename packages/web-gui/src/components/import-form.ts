@@ -1,8 +1,7 @@
-// web-ui/components/import-form.ts — `<import-form>` island.
-//
-// Progressive enhancement: live URL count for the bulk textarea + per-URL
-// status during import. Without JS the forms still POST to /ui/import/* natively.
-
+/**
+ * `<import-form>` — JS path: live URL count + per-URL status. Forms still
+ * work without JS (POST /ui/import/* natively).
+ */
 class ImportForm extends HTMLElement {
   connectedCallback(): void {
     const bulk = this.querySelector<HTMLTextAreaElement>("#bulk-urls");

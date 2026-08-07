@@ -1,12 +1,10 @@
-// D1 row shapes — one interface per persisted table.
-//
-// These mirror the column shapes in `packages/core/schema.sql`, NOT the
-// Wallabag JSON wire shape (that lives in `shared/types.ts`). The `Entry`
-// and `Tag` row types may be referenced by query helpers, but most modules
-// use small inline `{…}` selections; the types here exist so consumers and
-// future query helpers have a single canonical name for each table.
+// D1 row shapes — one interface per persisted table. These mirror the
+// column shapes in `packages/core/schema.sql`, NOT the Wallabag JSON wire
+// shape (that lives in `wire-types.ts`). The `Entry` and `Tag` row types may
+// be referenced by query helpers, but most modules use small inline `{…}`
+// selections; the types here exist so consumers and future query helpers have
+// a single canonical name for each table.
 
-/** `users` row. */
 export interface User {
   id: number;
   username: string;
@@ -18,7 +16,7 @@ export interface User {
   updated_at: string;
 }
 
-/** `user_config` row. Lives in its own table; exposed via `GET /api/config`. */
+/** `user_config` row — surfaced as `GET /api/config`. */
 export interface UserConfig {
   id: number;
   user_id: number;
@@ -31,7 +29,6 @@ export interface UserConfig {
   display_thumbnails: number;
 }
 
-/** `oauth_clients` row. */
 export interface OAuthClient {
   id: number;
   user_id: number;
@@ -43,7 +40,6 @@ export interface OAuthClient {
   created_at: string;
 }
 
-/** `oauth_access_tokens` row. */
 export interface OAuthAccessToken {
   id: number;
   client_id: number;
@@ -54,7 +50,6 @@ export interface OAuthAccessToken {
   created_at: string;
 }
 
-/** `oauth_refresh_tokens` row. */
 export interface OAuthRefreshToken {
   id: number;
   client_id: number;
@@ -65,7 +60,6 @@ export interface OAuthRefreshToken {
   created_at: string;
 }
 
-/** `oauth_auth_codes` row. */
 export interface OAuthAuthCode {
   id: number;
   client_id: number;
@@ -77,7 +71,6 @@ export interface OAuthAuthCode {
   created_at: string;
 }
 
-/** `entries` row (the wide row). */
 export interface Entry {
   id: number;
   user_id: number;
@@ -103,7 +96,6 @@ export interface Entry {
   updated_at: string;
 }
 
-/** `tags` row. */
 export interface Tag {
   id: number;
   user_id: number;
@@ -112,13 +104,11 @@ export interface Tag {
   created_at: string;
 }
 
-/** `entry_tags` junction row. */
 export interface EntryTag {
   entry_id: number;
   tag_id: number;
 }
 
-/** `annotations` row. */
 export interface Annotation {
   id: string;
   entry_id: number;
@@ -130,7 +120,6 @@ export interface Annotation {
   updated_at: string;
 }
 
-/** `tagging_rules` row. */
 export interface TaggingRule {
   id: number;
   user_id: number;

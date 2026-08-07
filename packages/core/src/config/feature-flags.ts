@@ -1,5 +1,3 @@
-// Feature flags read off `env`. Currently just the registration toggle.
-
 /**
  * Instance-wide feature toggle for account registration. Treated as
  * enabled unless `ALLOWED_REGISTRATION` is explicitly a falsey value after
@@ -13,4 +11,3 @@ export function isRegistrationEnabled(env: { ALLOWED_REGISTRATION?: string } | a
   const v = String(raw).trim().toLowerCase();
   return !(v === "false" || v === "0" || v === "");
 }
-

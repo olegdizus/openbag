@@ -1,13 +1,9 @@
-// Cron (scheduled) job dispatcher and implementations.
-//   hourly:          token cleanup + orphan tag removal
-//   daily 03:00 UTC: refetch failed entries (is_not_parsed = 1)
-
 import { D1Client } from "@openbag/core";
 import { enqueueEntryRefetch } from "../queue/producers";
 
 const db = (env: any) => new D1Client(env.DB);
 
-/** Delete expired OAuth tokens (access, refresh, auth codes). */
+/** Clears expired rows from all three OAuth token tables (access, refresh, auth codes). */
 export async function cleanupExpiredTokens(env: any): Promise<void> {
   let total = 0;
   for (const table of ["oauth_access_tokens", "oauth_refresh_tokens", "oauth_auth_codes"]) {
@@ -19,7 +15,7 @@ export async function cleanupExpiredTokens(env: any): Promise<void> {
   console.log(`[cron] cleaned expired tokens: ${total} rows`);
 }
 
-/** Delete expired sessions (browser cookie auth — sessions table). */
+/** Clears the browser-session `sessions` table of expired rows. */
 export async function cleanupExpiredSessions(env: any): Promise<void> {
   const r = await db(env).run(
     `DELETE FROM sessions WHERE expires_at <= datetime('now')`
@@ -27,7 +23,7 @@ export async function cleanupExpiredSessions(env: any): Promise<void> {
   console.log(`[cron] cleaned expired sessions: ${r.changes} rows`);
 }
 
-/** Remove tags that no longer have any entries linked. */
+/** Drops tags with zero entry_tags links left over after entry/tag deletion. */
 export async function removeOrphanTags(env: any): Promise<void> {
   const res = await db(env).run(
     `DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM entry_tags)`
@@ -35,7 +31,7 @@ export async function removeOrphanTags(env: any): Promise<void> {
   console.log(`[cron] removed orphan tags: ${res.changes}`);
 }
 
-/** Enqueue refetch jobs for entries that failed to parse. */
+/** Fan-out: enqueue one refetch job per entry still flagged `is_not_parsed = 1`. */
 export async function refetchFailedEntries(env: any): Promise<void> {
   const queue = env.ENTRY_REFETCH;
   if (!queue) {
@@ -53,6 +49,8 @@ export async function refetchFailedEntries(env: any): Promise<void> {
 
 /**
  * Dispatch a scheduled event by its cron schedule string.
+ *   hourly (`0 * * * *`):          token cleanup + orphan tag removal
+ *   daily 03:00 UTC (`0 3 * * *`): refetch failed entries (is_not_parsed = 1)
  * Keeps the worker's `scheduled` handler trivial and testable.
  */
 export async function runScheduledJob(env: any, cron: string): Promise<void> {

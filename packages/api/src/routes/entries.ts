@@ -93,19 +93,17 @@ function collectionResponse(c: any, items: any[], total: number, page: number, p
   };
 }
 
-/** Deterministic URL dedup key (hex of the URL bytes). */
+/** Hex of the URL bytes — stable dedup key. */
 function hashUrl(url: string): string {
   return toHex(new TextEncoder().encode(url));
 }
 
-/** Split a tags value (comma-string or array) into trimmed labels. */
 function parseTags(tags: unknown): string[] {
   if (typeof tags === "string") return tags.split(",").map((t) => t.trim()).filter(Boolean);
   if (Array.isArray(tags)) return (tags as string[]).map((t) => t.trim()).filter(Boolean);
   return [];
 }
 
-/** Find or create a tag for a user; returns the tag row. */
 async function upsertTag(dbc: any, userId: number, label: string): Promise<{ id: number; label: string; slug: string }> {
   const slug = label.toLowerCase().replace(/\s+/g, "-");
   let tag = await dbc.one("SELECT id, label, slug FROM tags WHERE user_id = ? AND slug = ?", [userId, slug]).catch(() => null);
@@ -116,7 +114,6 @@ async function upsertTag(dbc: any, userId: number, label: string): Promise<{ id:
   return tag;
 }
 
-/** Upsert each label and link it to the entry; returns the upserted tags. */
 async function attachTags(dbc: any, userId: number, entryId: number, labels: string[]): Promise<{ id: number; label: string; slug: string }[]> {
   const out: { id: number; label: string; slug: string }[] = [];
   for (const label of labels) {
@@ -146,18 +143,13 @@ async function getEntryTags(dbc: any, entryId: number, userId: number) {
 async function enrichEntry(dbc: any, entry: any, userId: number) {
   if (!entry) return entry;
   entry.tags = await getEntryTags(dbc, entry.id, userId);
-  // Wallabag serializes these as booleans
-  // Wallabag API returns integers (0/1), not booleans
   entry.is_archived = entry.is_archived ? 1 : 0;
   entry.is_starred = entry.is_starred ? 1 : 0;
   entry.is_public = entry.is_public ? 1 : 0;
   entry.is_not_parsed = entry.is_not_parsed ? 1 : 0;
-  // Rename fields for Wallabag compat
   entry.user_name = null;
   entry.user_email = null;
 
-  // Format datetimes as ISO 8601 (Wallabag clients expect this format)
-  // D1 stores as "2026-06-10 15:10:58" → convert to "2026-06-10T15:10:58+00:00"
   for (const key of ["created_at", "updated_at", "published_at"]) {
     if (entry[key] && typeof entry[key] === "string") {
       entry[key] = entry[key].replace(" ", "T") + "+00:00";
@@ -166,10 +158,7 @@ async function enrichEntry(dbc: any, entry: any, userId: number) {
   return entry;
 }
 
-/**
- * Fetch content for an entry if it hasn't been parsed yet.
- * Called inline after entry creation — returns quickly on failure.
- */
+/** Returns quickly on failure (clears `is_not_parsed` so the queue stops retrying). */
 async function fetchContentIfNeeded(env: any, entryId: number): Promise<void> {
   try {
     const entry = await db(env).one<{ url: string; is_not_parsed: number }>(
@@ -198,7 +187,7 @@ async function fetchContentIfNeeded(env: any, entryId: number): Promise<void> {
     console.log(`Fetched content for entry ${entryId}: ${parsed.title || entry.url}`);
   } catch (err) {
     console.error(`Failed to fetch content for entry ${entryId}: ${(err as Error).message}`);
-    // Mark as parsed to avoid infinite retries
+    // Clear is_not_parsed so the queue stops retrying.
     await db(env).run("UPDATE entries SET is_not_parsed = 0 WHERE id = ?", [entryId]).catch(() => { });
   }
 }
@@ -206,7 +195,6 @@ async function fetchContentIfNeeded(env: any, entryId: number): Promise<void> {
 export function entryRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database } }>();
 
-  // GET /api/entries — list entries with sorting, filtering, pagination
   app.get("/", async (c) => {
     const user = c.get("user") || { id: 1 };
     const page = parseInt(c.req.query("page") || "1");
@@ -243,7 +231,6 @@ export function entryRoutes() {
     return c.json(collectionResponse(c, enriched, totalRow?.total ?? 0, page, perPage));
   });
 
-  // GET /api/entries/exists — check if entries exist by URL
   app.get("/exists", async (c) => {
     const user = c.get("user") || { id: 1 };
     const urls = c.req.query("urls");
@@ -260,7 +247,6 @@ export function entryRoutes() {
       return c.json({ error: "URL is empty" }, 400);
     }
 
-    // Single URL — simple response
     if (allUrls.length === 1 && !hashedUrls) {
       const singleUrl = allUrls[0];
       const urlHash = hashUrl(singleUrl);
@@ -271,7 +257,6 @@ export function entryRoutes() {
       return c.json({ exists: !!row });
     }
 
-    // Multiple URLs — batch response
     const results: Record<string, any> = {};
     for (const u of allUrls) {
       const h = hashUrl(u);
@@ -285,7 +270,6 @@ export function entryRoutes() {
     return c.json(results);
   });
 
-  // GET /api/entries/{id} — get single entry with tags
   app.get("/:id", async (c) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
@@ -293,8 +277,6 @@ export function entryRoutes() {
     return c.json(await enrichEntry(db(c.env), entry, user.id));
   });
 
-  // POST /api/entries — create or update entry
-  // Supports: url, title, content, tags, archive/starred, origin_url, language, authors, preview_picture, published_at, public
   app.post("/", async (c) => {
     const user = c.get("user") || { id: 1 };
     const body = await c.req.json().catch(() => ({}));
@@ -304,15 +286,13 @@ export function entryRoutes() {
     const urlHash = hashUrl(url);
     const title = body.title || url;
 
-    // Check if entry already exists — return it if so
     const existing = await db(c.env).one("SELECT * FROM entries WHERE user_id = ? AND url_hash = ?", [user.id, urlHash]).catch(() => null);
     if (existing) {
-      // Update existing entry with provided fields
       const sets: string[] = [];
       const params: any[] = [];
       if (body.title) { sets.push("title = ?"); params.push(body.title); }
       if (body.content) {
-        // Sanitize + recompute reading time. Snapshot content_raw on first edit.
+        // Snapshot content_raw on the first edit.
         const sanitized = sanitizeEntryHtml(String(body.content));
         const raw = await db(c.env).one("SELECT content_raw FROM entries WHERE id = ?", [existing.id]);
         if (raw && raw.content_raw === null) {
@@ -342,7 +322,6 @@ export function entryRoutes() {
         params.push(existing.id);
         await db(c.env).run(`UPDATE entries SET ${sets.join(", ")} WHERE id = ?`, params);
       }
-      // Handle tags
       if (body.tags) {
         await attachTags(db(c.env), user.id, existing.id, parseTags(body.tags));
       }
@@ -350,7 +329,6 @@ export function entryRoutes() {
       return c.json(await enrichEntry(db(c.env), updated, user.id));
     }
 
-    // Create new entry
     const isArchived = body.archive ? 1 : 0;
     const isStarred = body.starred ? 1 : 0;
     const authors = body.authors ? (typeof body.authors === "string" ? body.authors : body.authors.join(",")) : null;
@@ -374,18 +352,16 @@ export function entryRoutes() {
     );
     const id = (await db(c.env).one("SELECT last_insert_rowid() as id", [])).id;
 
-    // Handle tags
     if (body.tags) {
       await attachTags(db(c.env), user.id, id, parseTags(body.tags));
     }
 
     const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ?", [id]);
-    // Fetch content from the URL in the background (don't block the response)
+    // Background fetch — waitUntil keeps the response from blocking on it.
     c.executionCtx.waitUntil(fetchContentIfNeeded(c.env, id));
     return c.json(await enrichEntry(db(c.env), entry, user.id), 201);
   });
 
-  // POST /api/entries/lists — bulk create entries
   app.post("/lists", async (c) => {
     const user = c.get("user") || { id: 1 };
     const body = await c.req.json();
@@ -406,7 +382,6 @@ export function entryRoutes() {
     return c.json(results);
   });
 
-  // DELETE /api/entries/list — bulk delete entries
   app.delete("/list", async (c) => {
     const user = c.get("user") || { id: 1 };
     const body = await c.req.json();
@@ -417,7 +392,6 @@ export function entryRoutes() {
     return c.json({ success: true });
   });
 
-  // DELETE /api/entries/{id} — delete entry
   app.delete("/:id", async (c) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
@@ -425,8 +399,6 @@ export function entryRoutes() {
     return c.json({ success: true });
   });
 
-  // PATCH /api/entries/{id} — update entry
-  // Supports: title, content, tags (replace), archive, starred, origin_url, language, authors, preview_picture, published_at, public
   app.patch("/:id", async (c) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
@@ -437,7 +409,7 @@ export function entryRoutes() {
 
     if (body.title) { sets.push("title = ?"); params.push(body.title); }
     if (body.content) {
-      // Sanitize + recompute reading time. Snapshot content_raw on first edit.
+      // Snapshot content_raw on the first edit.
       const sanitized = sanitizeEntryHtml(String(body.content));
       const raw = await db(c.env).one("SELECT content_raw FROM entries WHERE id = ?", [id]);
       if (raw && raw.content_raw === null) {
@@ -474,7 +446,7 @@ export function entryRoutes() {
       await db(c.env).run(`UPDATE entries SET ${sets.join(", ")} WHERE id = ? AND user_id = ?`, params);
     }
 
-    // Handle tags (PATCH replaces all tags on the entry)
+    // PATCH replaces all tags on the entry.
     if (body.tags) {
       await db(c.env).run("DELETE FROM entry_tags WHERE entry_id = ?", [id]);
       await attachTags(db(c.env), user.id, id, parseTags(body.tags));
@@ -484,7 +456,7 @@ export function entryRoutes() {
     return c.json(await enrichEntry(db(c.env), entry, user.id));
   });
 
-  // PATCH + GET /api/entries/{id}/reload — re-fetch entry (GET kept for client compat)
+  // Also mounted on GET for client compatibility.
   const reloadEntry = async (c: any) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
@@ -496,7 +468,6 @@ export function entryRoutes() {
   app.patch("/:id/reload", reloadEntry);
   app.get("/:id/reload", reloadEntry);
 
-  // GET /api/entries/{id}/export — export entry in various formats
   app.get("/:id/export", async (c) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
@@ -534,9 +505,7 @@ export function entryRoutes() {
     }
   });
 
-  // GET /api/entries/{id}/tags — list tags for an entry
-  // EPUB export — used by Plop Reader and other e-reader clients
-  // URL: /api/entries/{id}/export.epub
+  // `/api/entries/{id}/export.epub` — direct route used by Plop Reader and other e-reader clients.
   app.get("/:id/export.epub", async (c) => {
     const user = c.get("user") || { id: 1 };
     const id = parseInt(c.req.param("id"));
@@ -566,7 +535,7 @@ export function entryRoutes() {
     return c.json({ items: tags });
   });
 
-  // POST /api/entries/{id}/tags — add tags to an entry (append, not replace)
+  // Append-only — does NOT clear existing entry_tags.
   app.post("/:id/tags", async (c) => {
     const user = c.get("user");
     const entryId = parseInt(c.req.param("id"));
@@ -575,7 +544,6 @@ export function entryRoutes() {
     return c.json(addedTags);
   });
 
-  // DELETE /api/entries/{entryId}/tags/{tagId} — remove tag from entry
   app.delete("/:entryId/tags/:tagId", async (c) => {
     const entryId = parseInt(c.req.param("entryId"));
     const tagId = parseInt(c.req.param("tagId"));
@@ -583,7 +551,6 @@ export function entryRoutes() {
     return c.json({ success: true });
   });
 
-  // POST /api/entries/tags/lists — add tags to multiple entries
   app.post("/tags/lists", async (c) => {
     const user = c.get("user");
     const body = await c.req.json();
@@ -595,7 +562,6 @@ export function entryRoutes() {
     return c.json({ success: true });
   });
 
-  // DELETE /api/entries/tags/list — remove tags from multiple entries
   app.delete("/tags/list", async (c) => {
     const user = c.get("user");
     const body = await c.req.json();

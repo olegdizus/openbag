@@ -20,12 +20,11 @@ import { isRegistrationEnabled, D1Client } from "@openbag/core";
 
 export const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database; ALLOWED_REGISTRATION?: string } }>();
 
-// Global middleware
 app.use("*", corsMiddleware());
 app.use("*", loggingMiddleware());
 app.use("*", errorMiddleware());
 
-// Public routes (no auth required)
+
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 app.get("/api/version", (c) => c.text("2.5.0"));
 app.get("/api/info", (c) => c.json({
@@ -37,10 +36,9 @@ app.get("/api/info", (c) => c.json({
 // Mount OAuth2 protocol routes (Wallabag clients — /oauth/v2/token etc.)
 app.route("/", authRoutes());
 
-// Browser auth (login/signup/logout + /me "am I logged in?"). /me is public.
+// Browser auth: login/signup/logout. `/me` is intentionally public.
 app.route("/api/auth", apiAuthRoutes());
 
-// Protected API routes
 const api = new Hono();
 api.use("*", authMiddleware());
 api.route("/entries", entryRoutes());
@@ -54,7 +52,6 @@ api.route("/", userRoutes());
 api.route("/feed", feedRoutes());
 api.route("/oauth", apiOauthRoutes());
 
-// DELETE /api/tag/label — singular "tag" path, Wallabag compat
 api.delete("/tag/label", async (c: any) => {
   const user = c.get("user");
   const d = new D1Client(c.env.DB);
@@ -73,9 +70,7 @@ api.delete("/tag/label", async (c: any) => {
 
 app.route("/api", api);
 
-// Public feed URLs (auth via ?token=<feed_token>, mounted outside auth middleware
-// so RSS readers that can't send Bearer headers can fetch them).
+// Mounted outside authMiddleware — RSS readers that only speak ?token=<feed_token> can fetch them.
 app.route("/api/feeds", feedPublicRoutes());
 
-// Share pages are public
 app.route("/share", shareRoutes());

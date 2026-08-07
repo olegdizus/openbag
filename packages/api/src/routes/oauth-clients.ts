@@ -1,11 +1,6 @@
-// OAuth client CRUD for the developer UI (browser side).
-//
-// Mirrors `worker/auth/features/clients/index.ts` (the data helpers), but
-// exposes them as REST endpoints protected by authMiddleware — so the
-// developer page can list/create/delete its own OAuth clients via cookie auth.
-//
-// This is intentionally separate from `auth/routes.ts` (`/oauth/v2/token` etc.)
-// which is the OAuth2 protocol flow Wallabag clients use.
+// OAuth client CRUD for the developer UI. Intentionally separate from
+// `auth/routes.ts` (`/oauth/v2/token` etc.) — those are the OAuth2 protocol
+// routes used by Wallabag clients.
 
 import { Hono } from "hono";
 import {
@@ -15,23 +10,17 @@ import {
   D1Client,
 } from "@openbag/core";
 
-/**
- * OAuth client management — mounted under `/api/oauth` in `api/index.ts`.
- * All routes require an authenticated user (Bearer or cookie).
- */
 export function apiOauthRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database } }>();
 
-  // GET /api/oauth/clients — list the current user's OAuth clients
   app.get("/clients", async (c) => {
     const user = c.get("user") as { id: number };
     const list = await listClients(c.env, user.id);
     return c.json({ items: list });
   });
 
-  // POST /api/oauth/clients — create a new client
-  // Body: { name: string, redirect_uris?: string[], allowed_grant_types?: string[] }
-  // Returns the created client (including the plaintext secret — only visible this once).
+  // Body: { name, redirect_uris?, allowed_grant_types? }. Returns the created client
+  // including its plaintext secret — only visible this once.
   app.post("/clients", async (c) => {
     const user = c.get("user") as { id: number };
     const body = await c.req.json().catch(() => ({}));
@@ -45,7 +34,6 @@ export function apiOauthRoutes() {
     return c.json(created, 201);
   });
 
-  // DELETE /api/oauth/clients/:id — delete one of the user's clients
   app.delete("/clients/:id", async (c) => {
     const user = c.get("user") as { id: number };
     const id = parseInt(c.req.param("id"), 10);

@@ -6,7 +6,7 @@ const db = (env: any) => new D1Client(env.DB);
 /** Cap results to keep feed responses cheap on Workers. */
 const FEED_LIMIT = 50;
 
-/** Returns true if the request authenticates via the `?token=` query param. */
+/** Authenticate via the `?token=<feed_token>` query param (not Bearer). */
 async function authenticateByToken(env: any, token: string | undefined): Promise<number | null> {
   if (!token) return null;
   const row = await db(env).one<{ id: number }>(
@@ -167,9 +167,7 @@ function stripForSummary(html: string): string {
 export function feedRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database } }>();
 
-  // GET /api/feed/token — return the current feed token without rotating it.
-  // Useful for the UI's "feed settings" page. Returns { token: null } when no
-  // token has been issued yet (DELETE /api/feed/token was called or never set).
+  // URLs are `null` when no feed token has been issued yet.
   app.get("/token", async (c) => {
     const user: any = c.get("user");
     const row = await db(c.env).one<{ feed_token: string | null; username: string }>(
@@ -191,7 +189,6 @@ export function feedRoutes() {
     });
   });
 
-  // POST /api/feed/token — generate (or rotate) the long-lived feed token.
   app.post("/token", async (c) => {
     const user: any = c.get("user");
     const token = randomHex(32); // 256-bit opaque secret
@@ -211,7 +208,6 @@ export function feedRoutes() {
     });
   });
 
-  // DELETE /api/feed/token — revoke the feed token.
   app.delete("/token", async (c) => {
     const user: any = c.get("user");
     await db(c.env).run(
@@ -221,8 +217,6 @@ export function feedRoutes() {
     return c.json({ success: true });
   });
 
-  // GET /api/feed — convenience Atom feed for the authenticated user.
-  // Useful in API explorers where you already have a Bearer token.
   app.get("/", async (c) => {
     const user: any = c.get("user");
     const entries = await fetchEntries(c.env, user.id);
@@ -252,7 +246,7 @@ export function feedRoutes() {
 export function feedPublicRoutes() {
   const app = new Hono();
 
-  // GET /api/feeds/{username}.atom — Atom 1.0 feed of recent entries
+
   app.get("/:username\\.atom", async (c) => {
     const username = c.req.param("username")!;
     const token = c.req.query("token");
@@ -287,7 +281,7 @@ export function feedPublicRoutes() {
     });
   });
 
-  // GET /api/feeds/{username}.xml — RSS 2.0 feed of recent entries
+
   app.get("/:username\\.xml", async (c) => {
     const username = c.req.param("username")!;
     const token = c.req.query("token");
@@ -322,7 +316,6 @@ export function feedPublicRoutes() {
   return app;
 }
 
-/** Recent entries for a feed, newest first. */
 async function fetchEntries(env: any, userId: number): Promise<any[]> {
   return db(env).all(
     `SELECT id, url, title, content, domain_name, authors, language,
@@ -335,8 +328,6 @@ async function fetchEntries(env: any, userId: number): Promise<any[]> {
   );
 }
 
-// ---- Test-only exports -------------------------------------------------------
-// Builders are private to keep the module surface tight; tests assert against
-// them via these typed aliases so we don't depend on HTTP/D1 plumbing.
+// Re-exported for direct unit testing — the builders are otherwise private to keep the API surface tight.
 export const __testBuildAtom = buildAtom;
 export const __testBuildRss = buildRss;

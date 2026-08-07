@@ -1,8 +1,3 @@
-// web-ui/components/entry-actions.ts — `<entry-actions>` island.
-//
-// Renders archive/star/delete buttons inline (replacing the SSR placeholder);
-// intercepts clicks to PATCH /api/entries/:id and roll back on error.
-
 import { api } from "../lib/api";
 
 interface EntryActionsAttrs {
@@ -19,6 +14,10 @@ function attrsFrom(node: HTMLElement): EntryActionsAttrs {
   };
 }
 
+/**
+ * `<entry-actions>` — archive/star/delete buttons PATCH /api/entries/:id.
+ * Optimistic on click; rolls back on error.
+ */
 class EntryActions extends HTMLElement {
   private state: EntryActionsAttrs = { id: 0, archived: false, starred: false };
 
@@ -55,7 +54,6 @@ class EntryActions extends HTMLElement {
   };
 
   private async patch(body: Record<string, unknown>): Promise<void> {
-    // Optimistic update before the round-trip.
     if ("archive" in body) this.state.archived = !!body.archive;
     if ("starred" in body) this.state.starred = !!body.starred;
     this.render();
@@ -66,11 +64,11 @@ class EntryActions extends HTMLElement {
       );
       this.state.archived = !!updated.is_archived;
       this.state.starred = !!updated.is_starred;
-      // Don't re-render — the optimistic UI may already match; trust the server.
+      // Trust the server — avoids a needless re-render.
       this.dataset.archived = updated.is_archived ? "1" : "0";
       this.dataset.starred = updated.is_starred ? "1" : "0";
     } catch (e) {
-      // Roll back: re-read attrs from data-* (they reflect the server state).
+      // data-* attrs reflect server state.
       this.state = attrsFrom(this);
       this.render();
     }

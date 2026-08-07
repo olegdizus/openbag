@@ -1,10 +1,3 @@
-// web-gui/src/pages/entries.tsx — GET /entries list page.
-//
-// Server-side data fetch via `@openbag/core`'s `getEntries` (D1 direct, no HTTP
-// round-trip — ADR-0018). Renders a static table + filter links + pagination.
-// The `<entries-table>` WC intercepts filter/pagination link clicks for
-// pushState-based navigation, but the page is fully usable without JS.
-
 import { SiteShell, type User } from "../layout";
 import { getEntries } from "@openbag/core";
 import type { ListFilters } from "@openbag/core/wire";
@@ -13,7 +6,7 @@ import type { FC } from "hono/jsx";
 
 interface EntriesPageProps {
   user: User;
-  /** Workers env (the page calls @openbag/core with this — ADR-0018). */
+  /** ADR-0018: passed to @openbag/core (D1 direct, no HTTP). */
   env: any;
   query: string; // raw search string, for pagination link construction
 }
@@ -44,6 +37,13 @@ const FilterLink: FC<FilterLinkProps> = ({ href, label, active }) => (
   <a href={href} className={active ? "filter-active" : ""}>{label}</a>
 );
 
+/**
+ * Server-side data fetch via `@openbag/core`'s `getEntries` (D1 direct, no
+ * HTTP round-trip — ADR-0018). Renders a static table + filter links +
+ * pagination. The `<entries-table>` WC intercepts filter/pagination link
+ * clicks for pushState-based navigation, but the page is fully usable
+ * without JS.
+ */
 export const EntriesPage: FC<EntriesPageProps> = async ({ user, env, query }) => {
   const sp = new URLSearchParams(query);
   const filters = parseListFilters(query, {});

@@ -1,11 +1,9 @@
-// web-ui/entrypoints/settings.ts — page bundle for /settings.
+// JS path: submit via /api/config for instant feedback.
 
 import "../components/toast-region";
 import "../components/site-shell";
 import "../components/feed-token-actions";
 
-// Native (no-JS) form already posts to /ui/settings. With JS enabled,
-// intercept and submit via the API for instant validation/feedback.
 const form = document.getElementById("settings-form") as HTMLFormElement | null;
 if (form) {
   form.addEventListener("submit", async (e) => {

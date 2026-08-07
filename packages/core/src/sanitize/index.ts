@@ -1,15 +1,7 @@
-// HTML sanitizer for user-edited entry content.
-//
-// entry.content is rendered raw into the reading view AND the public share
-// view (/share/:uuid), so anything stored here is effectively a stored-XSS
-// surface. The editor (editor.js) produces browser-generated HTML, but the
-// POST route can also be fed crafted input directly, so we sanitize on save.
-//
-// Approach is regex-based (matching the parser's cleanHtml convention) rather
-// than HTMLRewriter, because HTMLRewriter cannot enumerate or prefix-match
-// attributes (it can't drop all on* handlers generically). Regex is weaker
-// against adversarial nesting, which is why the steps below are layered and
-// the test suite covers OWASP XSS vectors.
+// HTML sanitizer for user-edited entry content. entry.content is rendered raw
+// into the reading view AND the public share view (/share/:uuid), so anything
+// stored here is effectively a stored-XSS surface — the POST route can be
+// fed crafted input directly, so we sanitize on save.
 
 const BLOCK_BANNED_TAGS = [
   "script", "style", "iframe", "object", "embed", "applet",
@@ -111,6 +103,14 @@ function sanitizeStyle(raw: string): string {
   return out.join("; ");
 }
 
+/**
+ * Sanitize untrusted entry HTML. Approach is regex-based (matching the
+ * parser's cleanHtml convention) rather than HTMLRewriter, because
+ * HTMLRewriter cannot enumerate or prefix-match attributes (it can't drop
+ * all on* handlers generically). Regex is weaker against adversarial nesting,
+ * which is why the steps below are layered and the test suite covers OWASP
+ * XSS vectors.
+ */
 export function sanitizeEntryHtml(input: string): string {
   if (!input) return "";
   let html = input;

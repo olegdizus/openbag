@@ -1,16 +1,11 @@
-// @openbag/api Worker entrypoint. Owns /api/*, /oauth/*, /share/*,
-// the entry-refetch queue consumer, and the hourly/daily cron triggers.
-// The web-gui Worker (packages/web-gui) is a separate deployable that shares
-// the same D1 database and imports @openbag/core directly.
+// @openbag/api Worker. Sibling to packages/web-gui — both import @openbag/core and share one D1.
 
 import { app as apiApp } from "./app";
 import { handleEntryRefetch } from "./queue/entry-refetch";
 import { runScheduledJob } from "./cron";
 
-// Re-exported for direct drive in tests — `app.fetch(...)` lets integration
-// tests reach the API router without a fetch loop.
 export { apiApp as app };
-// Re-export the XML feed builders for unit testing (see tests/unit/feed.test.ts).
+// XML feed builders — re-exported for feed.test.ts.
 export { __testBuildAtom, __testBuildRss } from "./routes/feed";
 
 /**

@@ -1,8 +1,4 @@
-// web-ui/entrypoints/login.ts — page bundle for /login (and /signup).
-//
-// Intercepts form submits, POSTs to /api/auth/login|signup, and routes to
-// either the `next` hidden field or `/entries` on success. On error, surfaces
-// the message inline (FIX: doesn't bounce to /login on 401 — see lib/api.ts).
+// /login + /signup. 401 here is surfaced inline (NOT bounced) — see lib/api.ts.
 
 import "../components/toast-region";
 import "../components/site-shell";
