@@ -7,6 +7,6 @@
   "dependencies": {
     "@wallabag/core": "file:../core",
     "@wallabag/auth": "file:../auth",
-    "hono": "^4.7.0"
+    "hono": "^4.13.1"
   }
 }
