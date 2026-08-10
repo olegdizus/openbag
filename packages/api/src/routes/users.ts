@@ -17,8 +17,9 @@ export function userRoutes() {
     const body = await c.req.json();
     const sets: string[] = [];
     const params: any[] = [];
-    if (body.email) { sets.push("email = ?"); params.push(body.email); }
-    if (body.name) { sets.push("name = ?"); params.push(body.name); }
+    // L5: cap lengths; ignore non-strings so a JSON array/object can't land here.
+    if (typeof body.email === "string" && body.email.length <= 320) { sets.push("email = ?"); params.push(body.email); }
+    if (typeof body.name === "string" && body.name.length <= 128) { sets.push("name = ?"); params.push(body.name); }
     if (sets.length === 0) return c.json({ success: true });
     params.push(user.id);
     await db(c.env).run(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`, params);

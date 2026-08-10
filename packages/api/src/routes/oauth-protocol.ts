@@ -40,6 +40,15 @@ export function authRoutes() {
     if (!client) {
       return c.json({ error: "invalid_client" }, 401);
     }
+    // M1: honor the client's stored grant allowlist. A client created
+    // restricted to authorization_code must not reach password/refresh.
+    const rawGrants = client.allowed_grant_types;
+    const allowedGrants = new Set<string>(
+      Array.isArray(rawGrants) ? rawGrants : (() => { try { return JSON.parse(rawGrants || "[]"); } catch { return []; } })(),
+    );
+    if (!allowedGrants.has(grantType)) {
+      return c.json({ error: "unauthorized_client" }, 400);
+    }
 
     let userId: number;
     try {

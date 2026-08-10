@@ -3,14 +3,19 @@ import { randomHex, tokenHash } from "../crypto";
 
 export async function findClient(env: any, clientId: string, clientSecret: string) {
   const db = new D1Client(env.DB);
+  // M4: the public client_id is the composite `<id>_<random_id>` (see
+  // actions.ts / oauth-clients.ts). Require AND verify the random_id half so
+  // the public identifier isn't just an enumerable integer.
   const parts = clientId.split("_");
+  if (parts.length !== 2) return null;
   const numericId = parseInt(parts[0]);
-  if (isNaN(numericId)) return null;
+  const randomId = parts[1];
+  if (isNaN(numericId) || !randomId) return null;
   // Compare sha256(secret) — the raw secret is never stored, matching the
   // token/session design so a DB leak can't forge a confidential client.
   return db.one(
-    "SELECT id, user_id, random_id, allowed_grant_types, redirect_uris FROM oauth_clients WHERE id = ? AND secret = ?",
-    [numericId, await tokenHash(clientSecret)]
+    "SELECT id, user_id, random_id, allowed_grant_types, redirect_uris FROM oauth_clients WHERE id = ? AND random_id = ? AND secret = ?",
+    [numericId, randomId, await tokenHash(clientSecret)]
   );
 }
 

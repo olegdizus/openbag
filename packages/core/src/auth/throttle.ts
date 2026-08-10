@@ -77,5 +77,11 @@ async function ensureTable(db: D1Client): Promise<void> {
      )`,
     [],
   );
+  // L1: match schema.sql's index so the throttling COUNT(*) stays indexed even
+  // when this isolate lazily creates the table (dev / a fresh DB).
+  await db.run(
+    `CREATE INDEX IF NOT EXISTS idx_login_attempts_key_time ON login_attempts(key, attempted_at)`,
+    [],
+  );
   ensured = true;
 }

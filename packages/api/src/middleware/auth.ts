@@ -32,6 +32,22 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
  * leaked URL token can't drive mutations), and signed `session` cookies
  * (browser UI). Either path attaches `{ id, username }` to context.
  */
+/** True when a cross-origin browser request must NOT be honored with a
+ *  `?access_token=` query token. Native clients (curl, server-side feed
+ *  readers, Wallabag apps) send no Origin; same-origin browser explorers send
+ *  a matching Origin; a third-party page always sends a foreign Origin.
+ *  Refusing the query token there closes the "leaked URL token is readable
+ *  cross-origin via reflected CORS" vector (M3). */
+function queryTokenOriginAllowed(c: any): boolean {
+  const origin = c.req.header("origin");
+  if (!origin) return true; // non-browser client
+  try {
+    return new URL(origin).host === new URL(c.req.url).host;
+  } catch {
+    return false; // malformed origin → deny
+  }
+}
+
 export function authMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
     const authHeader = c.req.header("Authorization");
@@ -42,7 +58,7 @@ export function authMiddleware() {
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.slice(7).trim();
       user = await resolveBearerToken(new D1Client(c.env.DB), token);
-    } else if (queryToken) {
+    } else if (queryToken && queryTokenOriginAllowed(c)) {
       user = await resolveBearerToken(new D1Client(c.env.DB), queryToken);
     } else {
       const sessionToken = readSessionCookie(c.req.header("cookie"));

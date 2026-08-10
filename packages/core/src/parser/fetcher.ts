@@ -22,21 +22,44 @@ export interface ParsedContent {
   finalUrl: string;
 }
 
+const FETCH_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (compatible; WallabagCF/1.0; +https://wallabag.org)",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+};
+
+/**
+ * L2: follow redirects manually, re-running the SSRF guard on every Location
+ * (the original check only covered the initial URL, so a 302 to
+ * `169.254.169.254` or an internal name slipped through). Bounded to 5 hops;
+ * relative Location values resolve against the current URL.
+ */
+async function fetchFollowingSafely(url: string): Promise<Response> {
+  let current = url;
+  for (let hop = 0; hop < 5; hop++) {
+    const res = await fetch(current, { redirect: "manual", headers: FETCH_HEADERS });
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (!loc) return res; // malformed redirect — surface as-is
+      current = new URL(loc, current).toString();
+      const safe = assertSafeFetchUrl(current);
+      if (!safe.ok) throw new Error(`Refused redirect: ${safe.reason}`);
+      continue;
+    }
+    return res;
+  }
+  throw new Error("Too many redirects");
+}
+
 export async function fetchAndParse(url: string): Promise<ParsedContent> {
   // SSRF guard (H2): only http(s), and refuse obvious internal/metadata
   // targets. On Workers the host resolves on Cloudflare's edge, but we still
   // block the well-known metadata/loopback/private hostnames as defense in
-  // depth and to avoid acting as an open proxy to internal names.
+  // depth and to avoid acting as an open proxy to internal names. Redirect
+  // targets are re-checked in fetchFollowingSafely (L2).
   const safe = assertSafeFetchUrl(url);
   if (!safe.ok) throw new Error(`Refused URL: ${safe.reason}`);
 
-  const res = await fetch(url, {
-    redirect: "follow",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; WallabagCF/1.0; +https://wallabag.org)",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    },
-  });
+  const res = await fetchFollowingSafely(url);
 
   if (!res.ok) {
     throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);

@@ -19,14 +19,21 @@ export async function passwordGrant(env: any, username: string, password: string
  * Resolve a refresh token. Bound to `clientId` (RFC 6749 §10.4): a token minted
  * for client A cannot be redeemed by client B even if leaked. Looks up by
  * sha256(token) — the raw token is never stored.
+ *
+ * H1: rotates on use — the consumed token is deleted so a leaked refresh
+ * token can't be replayed after the legitimate client refreshes (RFC 6749
+ * §10.4 / OAuth 2.0 BCP §4.13.2). The caller mints a fresh one.
  */
 export async function refreshTokenGrant(env: any, refreshToken: string, clientId: number) {
   const db = new D1Client(env.DB);
+  const hash = await tokenHash(refreshToken);
   const row = await db.one<{ user_id: number }>(
     "SELECT user_id FROM oauth_refresh_tokens WHERE token = ? AND client_id = ? AND expires_at > datetime('now')",
-    [await tokenHash(refreshToken), clientId],
+    [hash, clientId],
   );
-  return row ?? null;
+  if (!row) return null;
+  await db.run("DELETE FROM oauth_refresh_tokens WHERE token = ?", [hash]);
+  return row;
 }
 
 /** One-shot: exchange + delete, bound to `clientId`. Looks up by sha256(token). */

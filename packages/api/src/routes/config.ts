@@ -3,6 +3,11 @@ import { D1Client } from "@openbag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 
+/** L5: theme/language allowlists — mirrors queries/config.ts so the JSON API
+ *  and the /ui form path apply the same server-side constraint. */
+const ALLOWED_THEMES = new Set(["baggy", "dark", "light"]);
+const LANG_RE = /^[a-z]{2}(-[A-Za-z0-9]{2,8})?$/;
+
 /**
  * Coerce `v` to 1/0 if it looks truthy/falsy, else `undefined` (skip).
  * Mirrors Wallabag's loose intake of checkbox-on / off / missing.
@@ -56,15 +61,17 @@ export function configRoutes() {
     const sets: string[] = [];
     const params: any[] = [];
 
-    if (typeof body.theme === "string" && body.theme.trim()) {
-      sets.push("theme = ?"); params.push(body.theme.trim());
+    if (typeof body.theme === "string") {
+      const theme = body.theme.trim().slice(0, 32);
+      if (ALLOWED_THEMES.has(theme)) { sets.push("theme = ?"); params.push(theme); }
     }
     const ipp = asPositiveInt(body.items_per_page);
     if (ipp !== undefined) { sets.push("items_per_page = ?"); params.push(ipp); }
     const rs = asPositiveInt(body.reading_speed);
     if (rs !== undefined) { sets.push("reading_speed = ?"); params.push(rs); }
-    if (typeof body.language === "string" && body.language.trim()) {
-      sets.push("language = ?"); params.push(body.language.trim());
+    if (typeof body.language === "string") {
+      const language = body.language.trim().slice(0, 16);
+      if (LANG_RE.test(language)) { sets.push("language = ?"); params.push(language); }
     }
     const amr = asFlag(body.action_mark_as_read);
     if (amr !== undefined) { sets.push("action_mark_as_read = ?"); params.push(amr); }

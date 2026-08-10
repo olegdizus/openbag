@@ -38,6 +38,23 @@ function asPositiveInt(v: unknown): number | undefined {
   return Math.floor(n);
 }
 
+/** L5: theme is a fixed set (the settings <select> only offers these). */
+const ALLOWED_THEMES = new Set(["baggy", "dark", "light"]);
+/** L5: BCP-47-ish language tag, capped. Rejects arbitrary payloads. */
+const LANG_RE = /^[a-z]{2}(-[A-Za-z0-9]{2,8})?$/;
+
+function cleanTheme(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.trim().slice(0, 32);
+  return ALLOWED_THEMES.has(t) ? t : undefined;
+}
+
+function cleanLanguage(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.trim().slice(0, 16);
+  return LANG_RE.test(t) ? t : undefined;
+}
+
 export interface ConfigPatch {
   theme?: string;
   items_per_page?: number | string;
@@ -54,15 +71,17 @@ export async function updateConfig(env: any, userId: number, patch: ConfigPatch)
   const sets: string[] = [];
   const params: any[] = [];
 
-  if (typeof patch.theme === "string" && patch.theme.trim()) {
-    sets.push("theme = ?"); params.push(patch.theme.trim());
+  if (typeof patch.theme === "string") {
+    const theme = cleanTheme(patch.theme);
+    if (theme) { sets.push("theme = ?"); params.push(theme); }
   }
   const ipp = asPositiveInt(patch.items_per_page);
   if (ipp !== undefined) { sets.push("items_per_page = ?"); params.push(ipp); }
   const rs = asPositiveInt(patch.reading_speed);
   if (rs !== undefined) { sets.push("reading_speed = ?"); params.push(rs); }
-  if (typeof patch.language === "string" && patch.language.trim()) {
-    sets.push("language = ?"); params.push(patch.language.trim());
+  if (typeof patch.language === "string") {
+    const language = cleanLanguage(patch.language);
+    if (language) { sets.push("language = ?"); params.push(language); }
   }
   const amr = asFlag(patch.action_mark_as_read);
   if (amr !== undefined) { sets.push("action_mark_as_read = ?"); params.push(amr); }

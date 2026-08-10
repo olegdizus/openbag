@@ -109,31 +109,47 @@ function sanitizeStyle(raw: string): string {
   return out.join("; ");
 }
 
+/** One pass of tag/attribute stripping. NOT mutation-safe in a single pass —
+ *  removing a banned tag can splice neighboring fragments into a new tag
+ *  (e.g. `<<script>script>`). Callers loop until stable (see below). */
+function stripPass(html: string): string {
+  let out = html;
+  out = out.replace(commentRe, "");
+  out = out.replace(cdataRe, "");
+  out = out.replace(rawTextBannedRe, "");
+  out = out.replace(pairedBannedRe, "");
+  out = out.replace(loneBannedRe, "");
+  out = out.replace(eventHandlerRe, "");
+  out = out.replace(dangerousAttrRe, "");
+  out = out.replace(urlAttrRe, (match, val) => (isSafeUrl(val) ? match : ""));
+  out = out.replace(styleAttrRe, (_m, val) => {
+    const s = sanitizeStyle(val);
+    return s ? ` style="${s}"` : "";
+  });
+  out = out.replace(classIdAttrRe, "");
+  out = out.replace(dataAttrRe, "");
+  return out;
+}
+
 /**
  * Sanitize untrusted entry HTML. Approach is regex-based (matching the
  * parser's cleanHtml convention) rather than HTMLRewriter, because
  * HTMLRewriter cannot enumerate or prefix-match attributes (it can't drop
  * all on* handlers generically). Regex is weaker against adversarial nesting,
- * which is why the steps below are layered and the test suite covers OWASP
- * XSS vectors.
+ * which is why the strip pipeline below is **looped to a fixed point** (M2) so
+ * a single removal can't expose a tag re-assembled from adjacent fragments,
+ * and the test suite covers OWASP XSS vectors. CSP (`script-src 'self'`) is
+ * the outer defense-in-depth on the render surfaces.
  */
 export function sanitizeEntryHtml(input: string): string {
   if (!input) return "";
   let html = input;
-  html = html.replace(commentRe, "");
-  html = html.replace(cdataRe, "");
-  html = html.replace(rawTextBannedRe, "");
-  html = html.replace(pairedBannedRe, "");
-  html = html.replace(loneBannedRe, "");
-  html = html.replace(eventHandlerRe, "");
-  html = html.replace(dangerousAttrRe, "");
-  html = html.replace(urlAttrRe, (match, val) => (isSafeUrl(val) ? match : ""));
-  html = html.replace(styleAttrRe, (_m, val) => {
-    const s = sanitizeStyle(val);
-    return s ? ` style="${s}"` : "";
-  });
-  html = html.replace(classIdAttrRe, "");
-  html = html.replace(dataAttrRe, "");
+  // M2: loop to a fixed point (cap 5) — kills single-pass mutation bypasses.
+  for (let i = 0; i < 5; i++) {
+    const next = stripPass(html);
+    if (next === html) break;
+    html = next;
+  }
   html = html.replace(/\u00a0/g, " ");
   html = html.replace(/[ \t]*\n[ \t]*/g, "\n");
   html = html.replace(/\n{3,}/g, "\n\n");

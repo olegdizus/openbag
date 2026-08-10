@@ -191,6 +191,28 @@ describe("sanitizeEntryHtml — misc attributes", () => {
   });
 });
 
+describe("sanitizeEntryHtml — fixed point on mutation nesting (M2)", () => {
+  // Removing a banned tag can splice neighboring fragments into a new tag in
+  // a single regex pass. The loop must converge and leave no executable markup.
+  const mutations = [
+    "<<script>script>alert(1)</script>",
+    "<scr<script>ipt>alert(1)</script>",
+    "<img/src=x/<script>alert(1)</script>>",
+    "<<style>style>x{background:url(javascript:1)}</style>",
+  ];
+  for (const p of mutations) {
+    it(`stabilizes and strips executable markup: ${p.slice(0, 24)}…`, () => {
+      const once = sanitizeEntryHtml(p);
+      const twice = sanitizeEntryHtml(once);
+      expect(once).toBe(twice); // fixed point reached
+      expect(once.toLowerCase()).not.toContain("script");
+      expect(once.toLowerCase()).not.toContain("alert");
+      expect(once.toLowerCase()).not.toContain("style");
+      expect(once.toLowerCase()).not.toContain("javascript");
+    });
+  }
+});
+
 describe("computeReadingTime", () => {
   it("is at least 1 minute", () => {
     expect(computeReadingTime("<p>short</p>")).toBe(1);
