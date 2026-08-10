@@ -23,17 +23,17 @@
     "create-user": "tsx scripts/create-user.ts"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.8.0",
-    "@cloudflare/workers-types": "^4.20260610.1",
+    "@cloudflare/vitest-pool-workers": "^0.20.3",
+    "@cloudflare/workers-types": "^5.20260809.1",
     "@mozilla/readability": "^0.6.0",
-    "@types/node": "^26.1.1",
-    "concurrently": "^9.0.0",
-    "esbuild": "^0.24.0",
-    "hono": "^4.7.0",
-    "linkedom": "^0.18.12",
-    "tsx": "^4.19.0",
+    "@types/node": "^26.2.0",
+    "concurrently": "^10.0.4",
+    "esbuild": "^0.28.2",
+    "hono": "^4.13.1",
+    "linkedom": "^0.18.13",
+    "tsx": "^4.23.11",
     "typescript": "^7.0.2",
-    "vitest": "^3.0.0",
-    "wrangler": "^4.0.0"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.120.0"
   }
 }

@@ -11,7 +11,7 @@
 // `@openbag/core` — no intra-Worker HTTP dispatch is required.
 
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { env } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { uiApp } from "@openbag/web-gui";
 import { D1Client, createSession } from "@openbag/core";
 

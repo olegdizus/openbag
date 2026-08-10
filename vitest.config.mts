@@ -1,4 +1,5 @@
-import { defineWorkersConfig } from "@cloudflare/vitest-pool-workers/config";
+import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
+import { defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -10,7 +11,14 @@ const root = dirname(fileURLToPath(import.meta.url));
 const coreSrc = resolve(root, "packages/core/src/index.ts");
 const apiSrc = resolve(root, "packages/api/src/index.ts");
 
-export default defineWorkersConfig({
+export default defineConfig({
+  // @cloudflare/vitest-pool-workers v0.13+ is a Vite plugin (cloudflareTest),
+  // not the old defineWorkersConfig test-pool wrapper (ADR-0018).
+  plugins: [
+    cloudflareTest({
+      wrangler: { configPath: "./packages/api/wrangler.jsonc" },
+    }),
+  ],
   resolve: {
     alias: {
       "@openbag/core": coreSrc,
@@ -27,10 +35,5 @@ export default defineWorkersConfig({
       "tests/**/*.test.ts",
       "packages/**/*.test.ts",
     ],
-    poolOptions: {
-      workers: {
-        wrangler: { configPath: "./packages/api/wrangler.jsonc" },
-      },
-    },
   },
 });

@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "@openbag/core": "workspace:*",
-    "hono": "^4.7.0"
+    "hono": "^4.13.1"
   }
 }

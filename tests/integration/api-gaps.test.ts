@@ -5,7 +5,7 @@
 // so they exercise the cookie → authMiddleware path.
 
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { env } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { app } from "@openbag/api";
 import { D1Client, createSession } from "@openbag/core";
 
