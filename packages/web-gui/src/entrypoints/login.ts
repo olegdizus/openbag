@@ -42,7 +42,9 @@ function wire(id: string, apiPath: string, next: string): void {
 function init() {
   const next = (() => {
     const u = new URL(location.href);
-    return u.searchParams.get("next") || "/entries";
+    const raw = u.searchParams.get("next") || "/entries";
+    // Same-origin relative paths only — ?next=https://evil is an open redirect.
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/entries";
   })();
   wire("login-form", "/api/auth/login", next);
   wire("signup-form", "/api/auth/signup", next);

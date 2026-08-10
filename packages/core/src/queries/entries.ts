@@ -268,9 +268,9 @@ export async function updateEntry(
   if (patch.title) { sets.push("title = ?"); params.push(patch.title); }
   if (patch.content != null) {
     const sanitized = sanitizeEntryHtml(String(patch.content));
-    const raw = await dbc.one<{ content_raw: string | null }>("SELECT content_raw FROM entries WHERE id = ?", [id]);
+    const raw = await dbc.one<{ content_raw: string | null }>("SELECT content_raw FROM entries WHERE id = ? AND user_id = ?", [id, userId]);
     if (raw && raw.content_raw == null) {
-      const current = await dbc.one<{ content: string | null }>("SELECT content FROM entries WHERE id = ?", [id]);
+      const current = await dbc.one<{ content: string | null }>("SELECT content FROM entries WHERE id = ? AND user_id = ?", [id, userId]);
       sets.push("content_raw = ?");
       params.push(current?.content ?? "");
     }
@@ -295,7 +295,7 @@ export async function updateEntry(
   if (patch.public !== undefined) {
     sets.push("is_public = ?"); params.push(patch.public ? 1 : 0);
     if (patch.public) {
-      const existing = await dbc.one<{ public_uuid: string | null }>("SELECT public_uuid FROM entries WHERE id = ?", [id]);
+      const existing = await dbc.one<{ public_uuid: string | null }>("SELECT public_uuid FROM entries WHERE id = ? AND user_id = ?", [id, userId]);
       if (!existing?.public_uuid) { sets.push("public_uuid = ?"); params.push(crypto.randomUUID()); }
     } else {
       sets.push("public_uuid = NULL");

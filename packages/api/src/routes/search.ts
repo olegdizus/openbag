@@ -9,8 +9,8 @@ export function searchRoutes() {
   app.get("/", async (c) => {
     const user = c.get("user");
     const term = c.req.query("term") || "";
-    const page = parseInt(c.req.query("page") || "1");
-    const perPage = parseInt(c.req.query("perPage") || "30");
+    const page = Math.max(1, parseInt(c.req.query("page") || "1") || 1);
+    const perPage = Math.min(Math.max(parseInt(c.req.query("perPage") || "30") || 30, 1), 200);
     const offset = (page - 1) * perPage;
 
     if (!term) {

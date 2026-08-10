@@ -77,7 +77,7 @@ function buildAtom(opts: {
         ? `\n      <published>${toRfc3339(e.published_at)}</published>`
         : "";
       const summary = e.content
-        ? `\n      <summary type="html"><![CDATA[${stripForSummary(e.content)}]]></summary>`
+        ? `\n      <summary type="html"><![CDATA[${stripForSummary(e.content).replace(/]]>/g, "]]]]><![CDATA[>")}]]></summary>`
         : "";
       return `    <entry>
       <title>${escText(e.title || e.url || "Untitled")}</title>

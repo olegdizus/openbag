@@ -1,3 +1,5 @@
+import { isPrivateTarget } from "./fetcher";
+
 export interface EntryForEpub {
   id: number;
   title: string;
@@ -48,6 +50,15 @@ async function inlineImages(html: string, fetchFn?: (input: RequestInfo | URL, i
       try {
         if (url.startsWith("data:")) return;
         if (!url.startsWith("http://") && !url.startsWith("https://")) return;
+        // SSRF guard — parity with fetcher.assertSafeFetchUrl. A saved <img src>
+        // could otherwise turn EPUB export into an internal proxy whose response
+        // body is inlined (and downloaded). DNS-rebinding residual is bounded
+        // by CF egress, same as the article fetcher.
+        try {
+          if (isPrivateTarget(new URL(url).hostname.toLowerCase())) return;
+        } catch {
+          return;
+        }
 
         const doFetch = fetchFn || globalThis.fetch;
         const resp = await doFetch(url, {

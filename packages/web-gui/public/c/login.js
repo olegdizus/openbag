@@ -153,7 +153,8 @@ function wire(id, apiPath, next) {
 function init() {
   const next = (() => {
     const u = new URL(location.href);
-    return u.searchParams.get("next") || "/entries";
+    const raw = u.searchParams.get("next") || "/entries";
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/entries";
   })();
   wire("login-form", "/api/auth/login", next);
   wire("signup-form", "/api/auth/signup", next);

@@ -203,8 +203,8 @@ export function entryRoutes() {
 
   app.get("/", async (c) => {
     const user = c.get("user") as { id: number; username: string };
-    const page = parseInt(c.req.query("page") || "1");
-    const perPage = parseInt(c.req.query("perPage") || "30");
+    const page = Math.max(1, parseInt(c.req.query("page") || "1") || 1);
+    const perPage = Math.min(Math.max(parseInt(c.req.query("perPage") || "30") || 30, 1), 200);
     const offset = (page - 1) * perPage;
     const detail = c.req.query("detail") || "full";
     const sort = c.req.query("sort") || "created";
@@ -288,6 +288,7 @@ export function entryRoutes() {
     const body = await c.req.json().catch(() => ({}));
     const url = body.url as string;
     if (!url) return c.json({ error: "URL is required" }, 400);
+    try { new URL(url); } catch { return c.json({ error: "Invalid URL" }, 400); }
 
     const urlHash = hashUrl(url);
     const title = body.title || url;
@@ -377,7 +378,8 @@ export function entryRoutes() {
       const urlHash = hashUrl(url);
       const existing = await db(c.env).one("SELECT id FROM entries WHERE user_id = ? AND url_hash = ?", [user.id, urlHash]).catch(() => null);
       if (existing) { results.push(existing); continue; }
-      const domainName = url ? new URL(url).hostname : null;
+      let domainName: string | null = null;
+      try { domainName = new URL(url).hostname; } catch { /* invalid url — leave null */ }
       const result = await db(c.env).run(
         "INSERT INTO entries (user_id, url, url_hash, title, domain_name, mimetype, is_not_parsed) VALUES (?, ?, ?, ?, ?, 'text/html', 1)",
         [user.id, url, urlHash, url, domainName]
@@ -417,10 +419,10 @@ export function entryRoutes() {
     if (body.content) {
       // Snapshot content_raw on the first edit.
       const sanitized = sanitizeEntryHtml(String(body.content));
-      const raw = await db(c.env).one("SELECT content_raw FROM entries WHERE id = ?", [id]);
+      const raw = await db(c.env).one("SELECT content_raw FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
       if (raw && raw.content_raw === null) {
         sets.push("content_raw = ?");
-        const current = await db(c.env).one("SELECT content FROM entries WHERE id = ?", [id]);
+        const current = await db(c.env).one("SELECT content FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
         params.push(current?.content ?? "");
       }
       sets.push("content = ?"); params.push(sanitized);
@@ -439,7 +441,7 @@ export function entryRoutes() {
     if (body.public !== undefined) {
       sets.push("is_public = ?"); params.push(body.public ? 1 : 0);
       if (body.public) {
-        const existing = await db(c.env).one("SELECT public_uuid FROM entries WHERE id = ?", [id]);
+        const existing = await db(c.env).one("SELECT public_uuid FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
         if (!existing?.public_uuid) { sets.push("public_uuid = ?"); params.push(crypto.randomUUID()); }
       } else {
         sets.push("public_uuid = NULL");
@@ -491,7 +493,8 @@ export function entryRoutes() {
         return c.text(row, 200, { "Content-Type": "text/csv" });
       }
       case "xml": {
-        const xml = `<?xml version="1.0"?><entry><id>${entry.id}</id><title>${entry.title}</title><url>${entry.url}</url></entry>`;
+        const x = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+        const xml = `<?xml version="1.0"?><entry><id>${entry.id}</id><title>${x(entry.title)}</title><url>${x(entry.url)}</url></entry>`;
         return c.text(xml, 200, { "Content-Type": "application/xml" });
       }
       case "markdown": {
