@@ -24,7 +24,10 @@
       "head_sampling_rate": 1
     }
   },
-  "//": "Static assets live in `public/` (built client bundles + css). Anything OUTSIDE public/ is treated as source (TSX server components, TS client-side Web Components) and is NOT uploaded as static — keeps server source out of the static bundle.",
+  // Static assets live in `public/` (built client bundles + css). Anything
+  // OUTSIDE public/ is treated as source (TSX server components, TS client-side
+  // Web Components) and is NOT uploaded as static — keeps server source out of
+  // the static bundle. (`//` as a JSON key is not a wrangler field.)
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
