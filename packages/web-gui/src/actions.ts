@@ -66,7 +66,7 @@ export function uiActionRoutes() {
     const forbidden = requireSameOrigin(c);
     if (forbidden) return forbidden;
     const user = c.get("user") as { id: number; username: string };
-    const body = await parseForm < {
+    const body = await parseForm<{
       theme?: string;
       items_per_page?: string;
       reading_speed?: string;
@@ -74,7 +74,7 @@ export function uiActionRoutes() {
       action_mark_as_read?: string; // HTML checkboxes submit "on"
       list_mode?: string;
       display_thumbnails?: string;
-    }(c);
+    }>(c);
     await updateConfig(c.env, user.id, {
       theme: body.theme,
       items_per_page: body.items_per_page ? parseInt(body.items_per_page, 10) : undefined,

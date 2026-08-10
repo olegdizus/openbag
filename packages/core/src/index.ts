@@ -30,7 +30,7 @@ export {
   revokeSession,
 } from "./session";
 
-export { hashPassword, verifyPassword } from "./auth/password",
+export { hashPassword, verifyPassword } from "./auth/password";
 export {
   createUser,
   findUserByUsername,

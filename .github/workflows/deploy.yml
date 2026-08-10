@@ -29,9 +29,6 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Lint ADRs
-        run: pnpm lint:adr
-
   deploy:
     name: Deploy to Cloudflare
     needs: ci

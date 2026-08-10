@@ -31,23 +31,17 @@ Every official and third-party Wallabag client — browser extensions, mobile ap
 
 | Layer | Technology |
 | --- | --- |
-| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag-web-gui`; see [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)) |
+| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag-web-gui`) |
 | Database | Cloudflare D1 (SQLite), single database shared by both Workers |
 | HTTP framework | [Hono][hono] (one router per Worker) |
 | Shared logic | `@openbag/core` workspace package (pure TypeScript) |
 | Validation | Typia (compile-time AST transforms) |
-| Frontend | Hono JSX SSR + Web Components (see [docs](docs/)) |
+| Frontend | Hono JSX SSR + Web Components |
 | Headless browser | Cloudflare Browser Rendering (bound to the API Worker) |
 | Background jobs | Cloudflare Cron Triggers + Queues (owned by the API Worker) |
 | Testing | Vitest + Playwright |
 | Language | TypeScript (strict) |
 
-
-## Documentation
-
-- [**Architecture decisions (ADRs)**](docs/decisions/) — 18 MADR-format decisions covering the Wallabag-compat contract, D1 storage, opaque tokens, the UI tech stack, progressive enhancement, and the `core` + two-Worker split ([ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)).
-- [**Requirements**](docs/requirements/) — user-story requirements with Given/When/Then acceptance criteria, grouped into UI SSR, progressive enhancement, API contract, performance, and security.
-- [**Top-level docs index**](docs/README.md) — full ADR/requirements catalogues and contribution conventions.
 
 ## Project Structure
 
@@ -67,13 +61,12 @@ tests/
 └── compat/       # Wallabag response shape compatibility tests
 ```
 
-> **Two Workers, one database, pnpm workspace.** [ADR-0018](docs/decisions/0018-core-and-split-into-separate-ui-and-api-workers.md)
-> splits OpenBag into two Cloudflare Workers sharing one D1 database via the
+> **Two Workers, one database, pnpm workspace.** OpenBag is split into two Cloudflare Workers sharing one D1 database via the
 > `@openbag/core` workspace package. The UI Worker reads D1 directly through
 > `core` — no subrequest cost on SSR. Cloudflare routes `/api/*`, `/oauth/*`,
 > `/share/*` to `openbag-api` and `/*` to `openbag-web-gui` on the apex domain.
 >
-> Cross-package imports use npm aliases (`@openbag/core`), never relative paths:
+> Cross-package imports use package aliases (`@openbag/core`), never relative paths:
 > `api/` and `web-gui/` both declare `"@openbag/core": "workspace:*"` in their
 > `package.json`, and the repo root's `pnpm-workspace.yaml` declares
 > `packages: ["packages/*"]`. This keeps imports stable under file moves and
@@ -92,7 +85,7 @@ tests/
 ### 1. Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 
@@ -108,8 +101,8 @@ Update the `database_id` in `wrangler.jsonc` with the ID from the output.
 ### 3. Run Migrations
 
 ```bash
-npm run db:migrate:local    # Local development
-npm run db:migrate           # Production
+pnpm db:migrate:local    # Local development
+pnpm db:migrate           # Production
 ```
 
 
@@ -123,17 +116,17 @@ wrangler secret put ADMIN_PASSWORD_HASH
 The password hash should be a bcrypt hash. You can generate one with:
 
 ```bash
-npx bcrypt-cli <your-password>
+pnpm dlx bcrypt-cli <your-password>
 ```
 
 
 ### 5. Start Development Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
-Per ADR-0018 the project runs two Cloudflare Workers (`openbag-api` +
+The project runs two Cloudflare Workers (`openbag-api` +
 `openbag-web-gui`) sharing one D1 database. `pnpm dev` runs them
 concurrently with separate `wrangler dev` processes under
 `packages/api/wrangler.jsonc` and `packages/web-gui/wrangler.jsonc`.
@@ -143,7 +136,7 @@ them automatically while editing `packages/web-gui/src/entrypoints/**`, run
 in a second terminal:
 
 ```bash
-npm run watch:client
+pnpm watch:client
 ```
 
 The web-gui Worker then serves freshly-bundled `/c/*.js` from
@@ -178,7 +171,7 @@ Local dev: set `ALLOWED_REGISTRATION` in your `.dev.vars` file.
 Provision users out-of-band with the bundled script — it runs locally and writes straight to D1 via `wrangler`, so the registration flag cannot block it:
 
 ```bash
-npm run create-user -- --username alice --password 's3cret!' --email alice@example.com
+pnpm create-user -- --username alice --password 's3cret!' --email alice@example.com
 # add --local to target the dev (miniflare) D1 instead of production
 ```
 
@@ -247,16 +240,16 @@ Configure your Wallabag client (mobile app, browser extension, etc.) with:
 
 | Command | Description |
 | ------- | ----------- |
-| `npm run dev` | Start local development server |
-| `npm run build` | Type-check and build |
-| `npm run deploy` | Deploy to production |
-| `npm run deploy:dev` | Deploy to dev environment |
-| `npm run test` | Run unit & integration tests |
-| `npm run test:e2e` | Run Playwright E2E tests |
-| `npm run typecheck` | Type-check without building |
-| `npm run db:migrate` | Apply migrations (production) |
-| `npm run db:migrate:local` | Apply migrations (local) |
-| `npm run create-user` | Provision a user out-of-band (bypasses registration flag) |
+| `pnpm dev` | Start local development server |
+| `pnpm build` | Type-check and build |
+| `pnpm deploy` | Deploy to production |
+| `pnpm deploy:dev` | Deploy to dev environment |
+| `pnpm test` | Run unit & integration tests |
+| `pnpm test:e2e` | Run Playwright E2E tests |
+| `pnpm typecheck` | Type-check without building |
+| `pnpm db:migrate` | Apply migrations (production) |
+| `pnpm db:migrate:local` | Apply migrations (local) |
+| `pnpm create-user` | Provision a user out-of-band (bypasses registration flag) |
 
 
 ## Environments
