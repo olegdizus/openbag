@@ -32,7 +32,7 @@ pnpm dev
 
 ## Reporting bugs
 
-Open an [issue](https://github.com/oleg-deezus/wallabag_cf_worker/issues) with
+Open an [issue](https://github.com/oleg-deezus/openbag/issues) with
 enough detail to reproduce: the request, the response, the affected endpoint,
 and the Worker logs if you have them. Remember OpenBag runs on the Cloudflare
 Workers runtime, not Node.js.

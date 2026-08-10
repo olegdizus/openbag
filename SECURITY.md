@@ -7,7 +7,7 @@ Please **do not** open a public GitHub issue for security vulnerabilities.
 Report privately using one of:
 
 - GitHub's private vulnerability reporting at
-  <https://github.com/oleg-deezus/wallabag_cf_worker/security/advisories/new>, **or**
+  <https://github.com/oleg-deezus/openbag/security/advisories/new>, **or**
 - Email **olegdizus@gmail.com** with details and reproduction steps.
 
 Please allow up to 72 hours for an initial response. We will coordinate a fix
