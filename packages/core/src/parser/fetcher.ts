@@ -22,6 +22,13 @@ export interface ParsedContent {
 }
 
 export async function fetchAndParse(url: string): Promise<ParsedContent> {
+  // SSRF guard (H2): only http(s), and refuse obvious internal/metadata
+  // targets. On Workers the host resolves on Cloudflare's edge, but we still
+  // block the well-known metadata/loopback/private hostnames as defense in
+  // depth and to avoid acting as an open proxy to internal names.
+  const safe = assertSafeFetchUrl(url);
+  if (!safe.ok) throw new Error(`Refused URL: ${safe.reason}`);
+
   const res = await fetch(url, {
     redirect: "follow",
     headers: {
@@ -46,6 +53,28 @@ export async function fetchAndParse(url: string): Promise<ParsedContent> {
  * Pass 1: HTMLRewriter for metadata (title, og:*, lang, canonical).
  * Pass 2: linkedom + Readability for body content, excerpt, byline.
  */
+function assertSafeFetchUrl(raw: string): { ok: true } | { ok: false; reason: string } {
+  let parsed: URL;
+  try { parsed = new URL(raw); } catch { return { ok: false, reason: "invalid URL" }; }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, reason: `scheme '${parsed.protocol}' not allowed` };
+  }
+  const host = parsed.hostname.toLowerCase().replace(/^\[|]$/g, ""); // strip IPv6 brackets
+  // IP-literal targets in private / loopback / link-local / metadata ranges.
+  if (
+    /^(?:127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host) ||
+    /^172\.(?:1[6-9]|2\d|3[01])\./.test(host) ||
+    /^::1$|^fe80:|^fd[0-9a-f]{2}:/i.test(host)
+  ) {
+    return { ok: false, reason: "private/loopback address refused" };
+  }
+  // Well-known cloud metadata endpoints (by hostname).
+  if (host === "metadata.google.internal" || host === "metadata" || host === "metadata.azure.com") {
+    return { ok: false, reason: "metadata endpoint refused" };
+  }
+  return { ok: true };
+}
+
 export async function parseHtml(html: string, url: string, contentType: string = "text/html"): Promise<ParsedContent> {
   const domainName = (() => {
     try { return new URL(url).hostname; } catch { return ""; }

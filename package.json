@@ -18,8 +18,8 @@
     "deploy:web-gui": "pnpm build:client && wrangler deploy --config packages/web-gui/wrangler.jsonc",
     "deploy": "pnpm deploy:api && pnpm deploy:web-gui",
     "test": "vitest",
-    "db:init": "wrangler d1 execute openbag-db --local --file=packages/core/schema.sql --config packages/api/wrangler.jsonc",
-    "db:init:remote": "wrangler d1 execute openbag-db --remote --file=packages/core/schema.sql --config packages/api/wrangler.jsonc",
+    "db:init": "wrangler d1 execute wallabag-db --local --file=packages/core/schema.sql --config packages/api/wrangler.jsonc",
+    "db:init:remote": "wrangler d1 execute wallabag-db --remote --file=packages/core/schema.sql --config packages/api/wrangler.jsonc",
     "create-user": "tsx scripts/create-user.ts"
   },
   "devDependencies": {

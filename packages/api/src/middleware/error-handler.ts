@@ -3,12 +3,11 @@ export function errorMiddleware() {
     try {
       await next();
     } catch (err) {
+      // Log the real error (with message) for operators, but return a generic
+      // message to the client (M4) — raw err.message can leak SQL errors,
+      // internal paths, or type details that aid an attacker.
       console.error("API error:", err);
-      const message = err instanceof Error ? err.message : "Internal server error";
-      return c.json(
-        { error: { code: 500, message } },
-        500
-      );
+      return c.json({ error: { code: 500, message: "Internal server error" } }, 500);
     }
   };
 }

@@ -15,6 +15,9 @@ import {
   createSession,
   revokeSession,
   SESSION_COOKIE,
+  isThrottled,
+  recordLoginFailure,
+  clearLoginFailures,
 } from "@openbag/core";
 
 async function parseBody<T = Record<string, any>>(c: any): Promise<T> {
@@ -101,13 +104,21 @@ export function apiAuthRoutes() {
     if (!username || !password) {
       return c.json({ error: "Missing username or password" }, 400);
     }
+    if (await isThrottled(c.env, username)) {
+      return c.json({ error: "Too many attempts, try again later" }, 429);
+    }
     const ok = await verifyPasswordAgainst(c.env, username, password);
     if (!ok) {
+      await recordLoginFailure(c.env, username);
       // Constant-ish body to avoid username enumeration via shape.
       return c.json({ error: "Invalid credentials" }, 401);
     }
     const user = await findUserByUsername(c.env, username);
-    if (!user) return c.json({ error: "Invalid credentials" }, 401);
+    if (!user) {
+      await recordLoginFailure(c.env, username);
+      return c.json({ error: "Invalid credentials" }, 401);
+    }
+    await clearLoginFailures(c.env, username);
     const sessionId = await createSession(c.env, user.id, c.req.header("user-agent"));
     c.header("Set-Cookie", buildSessionCookie(sessionId));
     const info = await getUserInfo(c.env, user.id);

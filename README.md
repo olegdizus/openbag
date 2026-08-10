@@ -31,7 +31,7 @@ Every official and third-party Wallabag client — browser extensions, mobile ap
 
 | Layer | Technology |
 | --- | --- |
-| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag-web-gui`) |
+| Runtime | Cloudflare Workers (two — `openbag-api` + `openbag`) |
 | Database | Cloudflare D1 (SQLite), single database shared by both Workers |
 | HTTP framework | [Hono][hono] (one router per Worker) |
 | Shared logic | `@openbag/core` workspace package (pure TypeScript) |
@@ -51,7 +51,7 @@ packages/
 │                 #                              sanitize, parser, auth primitives. Pure TS, no Hono.
 ├── api/          # @openbag/api — API Worker (openbag-api): /api/*, /oauth/*, /share/* (JSON-only)
 │                 # Wallabag serializers, JSON envelopes; owns queues + cron + Browser Rendering
-└── web-gui/      # @openbag/web-gui — UI Worker (openbag-web-gui): /, /entries, /entry, /settings, /tags, …
+└── web-gui/      # @openbag/web-gui — UI Worker (openbag): /, /entries, /entry, /settings, /tags, …
                   # Hono JSX SSR + Web Components; /ui/* form-POST mutations; owns static assets
 migrations/       # D1 SQL migrations (applied via the API Worker's wrangler.jsonc)
 tests/
@@ -64,7 +64,7 @@ tests/
 > **Two Workers, one database, pnpm workspace.** OpenBag is split into two Cloudflare Workers sharing one D1 database via the
 > `@openbag/core` workspace package. The UI Worker reads D1 directly through
 > `core` — no subrequest cost on SSR. Cloudflare routes `/api/*`, `/oauth/*`,
-> `/share/*` to `openbag-api` and `/*` to `openbag-web-gui` on the apex domain.
+> `/share/*` to `openbag-api` and `/*` to `openbag` on the apex domain.
 >
 > Cross-package imports use package aliases (`@openbag/core`), never relative paths:
 > `api/` and `web-gui/` both declare `"@openbag/core": "workspace:*"` in their
@@ -106,18 +106,20 @@ pnpm db:migrate           # Production
 ```
 
 
-### 4. Set Admin Credentials
+### 4. Provision the First User
 
-```bash
-wrangler secret put ADMIN_USERNAME
-wrangler secret put ADMIN_PASSWORD_HASH
+Account creation via the web UI (`/signup`) is **disabled by default**
+(fail-closed). Provision the first user out-of-band with the bundled script —
+it runs locally and writes straight to D1 via `wrangler`, so the registration
+flag cannot block it:
+
+```shell
+pnpm create-user -- --username admin --password 's3cret!' --email admin@example.com
+# add --local to target the dev (miniflare) D1 instead of production
 ```
 
-The password hash should be a bcrypt hash. You can generate one with:
-
-```bash
-pnpm dlx bcrypt-cli <your-password>
-```
+Passwords are hashed with PBKDF2-SHA256 (600k iterations, 16-byte random salt).
+To enable self-service signup afterwards, set `ALLOWED_REGISTRATION` (see below).
 
 
 ### 5. Start Development Server
@@ -127,7 +129,7 @@ pnpm dev
 ```
 
 The project runs two Cloudflare Workers (`openbag-api` +
-`openbag-web-gui`) sharing one D1 database. `pnpm dev` runs them
+`openbag`) sharing one D1 database. `pnpm dev` runs them
 concurrently with separate `wrangler dev` processes under
 `packages/api/wrangler.jsonc` and `packages/web-gui/wrangler.jsonc`.
 
@@ -145,12 +147,15 @@ The web-gui Worker then serves freshly-bundled `/c/*.js` from
 
 ## Registration & User Provisioning
 
-Account creation via the web UI (`/signup`) is controlled by the `ALLOWED_REGISTRATION` environment variable:
+Account creation via the web UI (`/signup`) is controlled by the `ALLOWED_REGISTRATION` environment variable. It is **fail-closed**: disabled unless explicitly enabled.
 
 | Value | Behavior |
 | --- | --- |
-| unset, `true`, `1`, or any other string | Registration **enabled** (default) |
-| `false`, `0`, or empty string | Registration **disabled** — `/signup` returns 404, `/api/info` reports `allowed_registration: false`, and `createUser` refuses |
+| unset, `false`, `0`, `""`, `no`, `off` | Registration **disabled** (default) — `/signup` returns 404, `/api/info` reports `allowed_registration: false`, and `createUser` refuses |
+| `true`, `1`, `yes`, `on`, or any other affirmative string | Registration **enabled** |
+
+> Defaulting to disabled closes the self-register → mint-OAuth-client →
+> privilege-escalation chain. Provision users out-of-band with `pnpm create-user`.
 
 
 ### Toggling Registration

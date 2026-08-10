@@ -61,6 +61,15 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
 
 -- ============================================================================
+-- Login throttle — brute-force protection for /api/auth/login + password grant
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS login_attempts (
+  key           TEXT NOT NULL,           -- lowercased username
+  attempted_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_key_time ON login_attempts(key, attempted_at);
+
+-- ============================================================================
 -- OAuth2 — clients, access tokens, refresh tokens, auth codes
 -- (Wallabag v2 compatible; see SPEC.md §6.3–6.4)
 -- ============================================================================

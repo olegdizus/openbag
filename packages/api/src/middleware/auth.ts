@@ -1,4 +1,4 @@
-import { D1Client, lookupSession } from "@openbag/core";
+import { D1Client, lookupSession, tokenHash } from "@openbag/core";
 
 /** Read the `session` cookie value (if any) from a raw Cookie header. */
 function readSessionCookie(cookieHeader: string | undefined): string | undefined {
@@ -7,14 +7,14 @@ function readSessionCookie(cookieHeader: string | undefined): string | undefined
   return match ? decodeURIComponent(match[1]) : undefined;
 }
 
-/** Resolve a Bearer / query token to a user row, or null. */
+/** Resolve a Bearer token to a user row, or null. Looks up by sha256(token). */
 async function resolveBearerToken(
   db: D1Client,
   token: string,
 ): Promise<{ id: number; username: string } | null> {
   const tokenRow = await db.one<{ user_id: number }>(
     "SELECT user_id FROM oauth_access_tokens WHERE token = ? AND expires_at > datetime('now')",
-    [token],
+    [await tokenHash(token)],
   );
   if (!tokenRow) return null;
   return db.one<{ id: number; username: string }>(
@@ -23,17 +23,18 @@ async function resolveBearerToken(
   );
 }
 
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 /**
- * Auth middleware — accepts Bearer tokens (Wallabag clients) and signed
- * `session` cookies (browser UI) indistinguishably. Either path attaches
- * `{ id, username }` to context and rejects with 401 otherwise.
+ * Auth middleware — accepts Bearer tokens (Wallabag clients), `?access_token=`
+ * query param (read-only: feeds/explorers; restricted to safe methods so a
+ * leaked URL token can't drive mutations), and signed `session` cookies
+ * (browser UI). Either path attaches `{ id, username }` to context.
  */
 export function authMiddleware() {
   return async (c: any, next: () => Promise<void>) => {
-    // Support Authorization: Bearer (clients), ?access_token= query param
-    // (read-only feed/explorers), and session= cookie (browser UI).
     const authHeader = c.req.header("Authorization");
-    const queryToken = c.req.query("access_token");
+    const queryToken = SAFE_METHODS.has(c.req.method) ? c.req.query("access_token") : undefined;
 
     let user: { id: number; username: string } | null = null;
 
@@ -43,16 +44,12 @@ export function authMiddleware() {
     } else if (queryToken) {
       user = await resolveBearerToken(new D1Client(c.env.DB), queryToken);
     } else {
-      // No Bearer — try the session cookie path.
       const sessionToken = readSessionCookie(c.req.header("cookie"));
       user = await lookupSession(c.env, sessionToken);
     }
 
     if (!user) {
-      return c.json(
-        { error: { code: 401, message: "Unauthorized" } },
-        401,
-      );
+      return c.json({ error: { code: 401, message: "Unauthorized" } }, 401);
     }
 
     c.set("user", user);

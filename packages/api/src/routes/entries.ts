@@ -6,7 +6,7 @@ const db = (env: any) => new D1Client(env.DB);
 function buildQuery(c: any, baseSql: string, baseParams: any[]): { sql: string; params: any[] } {
   const conditions: string[] = ["e.user_id = ?"];
   const params = [...baseParams];
-  const user = c.get("user") || { id: 1 };
+  const user = c.get("user") as { id: number; username: string };
   params.push(user.id);
 
   const archive = c.req.query("archive");
@@ -196,7 +196,7 @@ export function entryRoutes() {
   const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database } }>();
 
   app.get("/", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const page = parseInt(c.req.query("page") || "1");
     const perPage = parseInt(c.req.query("perPage") || "30");
     const offset = (page - 1) * perPage;
@@ -232,7 +232,7 @@ export function entryRoutes() {
   });
 
   app.get("/exists", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const urls = c.req.query("urls");
     const url = c.req.query("url");
     const hashedUrl = c.req.query("hashed_url");
@@ -271,14 +271,14 @@ export function entryRoutes() {
   });
 
   app.get("/:id", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     const entry = await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     return c.json(await enrichEntry(db(c.env), entry, user.id));
   });
 
   app.post("/", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const body = await c.req.json().catch(() => ({}));
     const url = body.url as string;
     if (!url) return c.json({ error: "URL is required" }, 400);
@@ -363,7 +363,7 @@ export function entryRoutes() {
   });
 
   app.post("/lists", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const body = await c.req.json();
     const urls: string[] = body.urls || [];
     const results = [];
@@ -383,7 +383,7 @@ export function entryRoutes() {
   });
 
   app.delete("/list", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const body = await c.req.json();
     const ids: number[] = body.ids || [];
     if (ids.length === 0) return c.json({ success: true });
@@ -393,14 +393,14 @@ export function entryRoutes() {
   });
 
   app.delete("/:id", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     await db(c.env).run("DELETE FROM entries WHERE id = ? AND user_id = ?", [id, user.id]);
     return c.json({ success: true });
   });
 
   app.patch("/:id", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     const body = await c.req.json().catch(() => ({}));
 
@@ -458,7 +458,7 @@ export function entryRoutes() {
 
   // Also mounted on GET for client compatibility.
   const reloadEntry = async (c: any) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     await db(c.env).run("UPDATE entries SET is_not_parsed = 1, updated_at = datetime('now') WHERE id = ? AND user_id = ?", [id, user.id]);
     c.executionCtx.waitUntil(fetchContentIfNeeded(c.env, id));
@@ -469,7 +469,7 @@ export function entryRoutes() {
   app.get("/:id/reload", reloadEntry);
 
   app.get("/:id/export", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     const format = c.req.query("format") || "json";
     const entry = await enrichEntry(db(c.env), await db(c.env).one("SELECT * FROM entries WHERE id = ? AND user_id = ?", [id, user.id]), user.id);
@@ -507,7 +507,7 @@ export function entryRoutes() {
 
   // `/api/entries/{id}/export.epub` — direct route used by Plop Reader and other e-reader clients.
   app.get("/:id/export.epub", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     const entry = await db(c.env).one(
       "SELECT id, title, url, content, domain_name, authors, language, reading_time, preview_picture, created_at, updated_at FROM entries WHERE id = ? AND user_id = ?",
@@ -529,7 +529,7 @@ export function entryRoutes() {
   });
 
   app.get("/:id/tags", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const entryId = parseInt(c.req.param("id"));
     const tags = await getEntryTags(db(c.env), entryId, user.id);
     return c.json({ items: tags });
@@ -584,7 +584,7 @@ export function entryRoutes() {
    * restore per snapshot). Returns the updated entry.
    */
   app.post("/:id/content/reset", async (c) => {
-    const user = c.get("user") || { id: 1 };
+    const user = c.get("user") as { id: number; username: string };
     const id = parseInt(c.req.param("id"));
     const current = await db(c.env).one<{ content_raw: string | null }>(
       "SELECT content_raw FROM entries WHERE id = ? AND user_id = ?",

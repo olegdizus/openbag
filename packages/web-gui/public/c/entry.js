@@ -257,12 +257,7 @@ var EntryEditor = class extends HTMLElement {
     editor.parentNode?.insertBefore(this.toolbar, editor);
     if (this.editButton) this.editButton.style.display = "none";
   };
-  /**
-   * Clone the shared `<template>` and register a SINGLE delegated click handler
-   * that switches on `data-cmd`. Cheaper (one listener vs. 8), more cacheable
-   * (markup parsed once at module load), and easier to extend than the legacy
-   * `addBtn(label, title, fn)` helper it replaces.
-   */
+  /** Clones the shared template + wires a single delegated click handler. */
   buildToolbar() {
     const bar = TOOLBAR_TEMPLATE.content.firstElementChild.cloneNode(true);
     this.status = bar.querySelector(".edit-status");
@@ -296,26 +291,20 @@ var EntryEditor = class extends HTMLElement {
         break;
     }
   };
-  // --- Range helpers -------------------------------------------------------
-  /** Returns the live Selection (or null if not available). */
   getRange() {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return null;
     return sel.getRangeAt(0);
   }
-  /** True when the selection starts and ends inside `editor`. */
   selectionIsInEditor(editor) {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return false;
     const r = sel.getRangeAt(0);
     return editor.contains(r.startContainer) && editor.contains(r.endContainer);
   }
-  // --- Inline wrapping (Bold/Italic/Underline) -----------------------------
   /**
-   * Wrap the current selection in `<${tagName}>`. Uses Range.surroundContents
-   * when the selection stays inside a single text node; falls back to a
-   * TreeWalker that splits the selection into spans across block boundaries
-   * (surroundContents throws when the range partially spans a non-text node).
+   * Range.surroundContents throws when the range partially spans a non-text
+   * node — fall back to a TreeWalker that splits + wraps each text fragment.
    */
   wrapInline(tagName) {
     const editor = this.contentEl;
@@ -365,11 +354,9 @@ var EntryEditor = class extends HTMLElement {
     }
     return out;
   }
-  // --- Block wrapping (P / H2 / H3 / Blockquote) ---------------------------
   /**
-   * Replace the closest block-level ancestor of the selection with a new
-   * element of `tagName`. Children are preserved; selection is restored to a
-   * sensible position inside the new element.
+   * Re-wrap the closest block-level ancestor as `<${tagName}>`. Children are
+   * preserved; selection restored inside the new element.
    */
   wrapBlock(tagName) {
     const editor = this.contentEl;
@@ -392,7 +379,6 @@ var EntryEditor = class extends HTMLElement {
     editor.focus();
     this.setStatus({ ok: true, msg: "" });
   }
-  /** Find the nearest block-level element inside `editor`. */
   closestBlock(editor, node) {
     let n = node;
     while (n && n !== editor) {
@@ -403,7 +389,6 @@ var EntryEditor = class extends HTMLElement {
     }
     return null;
   }
-  // --- Link insertion ------------------------------------------------------
   onLink = () => {
     const editor = this.contentEl;
     if (!editor) return;
@@ -440,7 +425,6 @@ var EntryEditor = class extends HTMLElement {
     editor.focus();
     this.setStatus({ ok: true, msg: "" });
   };
-  // --- Save / Reset --------------------------------------------------------
   onSave = async () => {
     const editor = this.contentEl;
     if (!editor) return;
@@ -477,7 +461,6 @@ var EntryEditor = class extends HTMLElement {
       this.setStatus({ ok: false, msg: e.message || "Reset failed" });
     }
   };
-  // --- Utilities -----------------------------------------------------------
   cleanup() {
     if (this.toolbar) {
       this.toolbar.remove();

@@ -1,15 +1,19 @@
 import { Hono } from "hono";
 import {
-  D1Client,
-  randomHex,
   findClient,
   createAccessToken,
   createRefreshToken,
   passwordGrant,
   refreshTokenGrant,
   exchangeAuthCode,
-  findUserByUsername,
+  isThrottled,
+  recordLoginFailure,
+  clearLoginFailures,
 } from "@openbag/core";
+
+function htmlEscape(s: string): string {
+  return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
 export function authRoutes() {
   const app = new Hono<{ Bindings: { DB: D1Database }; Variables: { user: { id: number; username: string } } }>();
@@ -27,7 +31,6 @@ export function authRoutes() {
     const password = str(body.password);
     const refreshToken = str(body.refresh_token);
     const code = str(body.code);
-    const redirectUri = str(body.redirect_uri);
 
     if (!grantType || !clientId || !clientSecret) {
       return c.json({ error: "invalid_request" }, 400);
@@ -43,35 +46,44 @@ export function authRoutes() {
       switch (grantType) {
         case "password":
           if (!username || !password) return c.json({ error: "invalid_grant" }, 400);
-          userId = await passwordGrant(c.env, username, password);
+          if (await isThrottled(c.env, username)) {
+            return c.json({ error: "invalid_grant" }, 400);
+          }
+          try {
+            userId = await passwordGrant(c.env, username, password);
+          } catch {
+            await recordLoginFailure(c.env, username);
+            return c.json({ error: "invalid_grant" }, 400);
+          }
+          await clearLoginFailures(c.env, username);
           break;
         case "refresh_token": {
           if (!refreshToken) return c.json({ error: "invalid_grant" }, 400);
-          const row = await refreshTokenGrant(c.env, refreshToken);
+          // Bound to the authenticated client (M2): a leaked refresh token only
+          // redeems for its own client.
+          const row = await refreshTokenGrant(c.env, refreshToken, client.id);
           if (!row) return c.json({ error: "invalid_grant" }, 400);
           userId = row.user_id;
           break;
         }
         case "authorization_code": {
           if (!code) return c.json({ error: "invalid_grant" }, 400);
-          const row = await exchangeAuthCode(c.env, code);
+          const row = await exchangeAuthCode(c.env, code, client.id);
           if (!row) return c.json({ error: "invalid_grant" }, 400);
           userId = row.user_id;
           break;
         }
-        case "token": {
-          // Legacy implicit grant — use admin user
-          const user = await findUserByUsername(c.env, "admin");
-          if (!user) return c.json({ error: "invalid_grant" }, 400);
-          userId = user.id;
-          break;
-        }
+        // Note: the implicit `token` grant was removed — it minted tokens for a
+        // hardcoded "admin" user regardless of caller (C1, privilege escalation).
+        // RFC 9700 deprecates implicit grant; clients should use `password` or
+        // `authorization_code` (the latter needs a consent UI, see /oauth/v2/auth).
         default:
           return c.json({ error: "unsupported_grant_type" }, 400);
       }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Invalid credentials";
-      return c.json({ error: message }, 400);
+    } catch {
+      // Generic message — avoid leaking which field failed (also masks any
+      // unexpected internal detail from the error middleware).
+      return c.json({ error: "invalid_grant" }, 400);
     }
 
     const accessToken = await createAccessToken(c.env, userId, client.id);
@@ -85,56 +97,29 @@ export function authRoutes() {
     });
   });
 
-  // Browser authorization endpoint (auth code flow)
+  // Browser authorization endpoint (auth code flow). The consent/approve flow
+  // is intentionally a safe stub — it does NOT mint codes until a real,
+  // session-authenticated consent UI is implemented. All interpolated values
+  // are HTML-escaped (H1: the old version reflected client_id/redirect_uri).
   app.get("/oauth/v2/auth", async (c) => {
-    const clientId = c.req.query("client_id");
-    const redirectUri = c.req.query("redirect_uri");
+    const clientId = htmlEscape(c.req.query("client_id") || "");
+    const redirectUri = htmlEscape(c.req.query("redirect_uri") || "");
     const responseType = c.req.query("response_type");
-
-    if (!clientId || responseType !== "code") {
-      return c.html("<h1>Invalid request</h1>", 400);
+    if (responseType !== "code") {
+      return c.text("Invalid request: response_type must be 'code'", 400);
     }
-
-    return c.html(`
-      <!DOCTYPE html>
-      <html>
-        <head><title>Authorize</title></head>
-        <body>
-          <h1>Authorize application?</h1>
-          <form method="post" action="/oauth/v2/auth/approve">
-            <input type="hidden" name="client_id" value="${clientId}"/>
-            <input type="hidden" name="redirect_uri" value="${redirectUri || ""}"/>
-            <button type="submit">Approve</button>
-          </form>
-        </body>
-      </html>
-    `);
-  });
-
-  app.post("/oauth/v2/auth/approve", async (c) => {
-    const body = await c.req.parseBody();
-    const clientId = typeof body.client_id === "string" ? body.client_id : "";
-    const redirectUri = typeof body.redirect_uri === "string" ? body.redirect_uri : "";
-
-    const client = await findClient(c.env, clientId, "");
-    if (!client) {
-      return c.html("<h1>Client not found</h1>", 404);
-    }
-
-    const user = await findUserByUsername(c.env, "admin");
-    if (!user) return c.html("<h1>Admin user not found</h1>", 500);
-    const authCode = randomHex(48);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const db = new D1Client(c.env.DB);
-    await db.run(
-      "INSERT INTO oauth_auth_codes (client_id, user_id, token, redirect_uri, expires_at) VALUES (?, ?, ?, ?, ?)",
-      [client.id, user.id, authCode, redirectUri, expiresAt]
-    );
-
-    const url = new URL(redirectUri || "/");
-    url.searchParams.set("code", authCode);
-    return c.redirect(url.toString(), 302);
+    return c.html(`<!DOCTYPE html><html><head><title>Authorize</title></head><body>
+      <h1>Authorize application</h1>
+      <p>Client: ${clientId || "(unknown)"}</p>
+      <p>Redirect: ${redirectUri || "(none)"}</p>
+      <p>The authorization-code consent screen is not yet implemented.</p>
+    </body></html>`);
   });
 
   return app;
 }
+
+// The former POST /oauth/v2/auth/approve endpoint was removed: it was dead
+// code (findClient with an empty secret always 404'd) and would have issued
+// admin auth codes with no authentication if "fixed" naively (M8). A real
+// consent flow needs a session-authenticated UI + redirect_uri validation.

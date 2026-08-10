@@ -1,4 +1,5 @@
 import { D1Client } from "../db";
+import { tokenHash } from "../crypto";
 import { verifyPassword } from "./password";
 
 export async function passwordGrant(env: any, username: string, password: string) {
@@ -10,21 +11,27 @@ export async function passwordGrant(env: any, username: string, password: string
   return user.id;
 }
 
-export async function refreshTokenGrant(env: any, refreshToken: string) {
+/**
+ * Resolve a refresh token. Bound to `clientId` (RFC 6749 §10.4): a token minted
+ * for client A cannot be redeemed by client B even if leaked. Looks up by
+ * sha256(token) — the raw token is never stored.
+ */
+export async function refreshTokenGrant(env: any, refreshToken: string, clientId: number) {
   const db = new D1Client(env.DB);
-  const row = await db.one(
-    "SELECT user_id, client_id FROM oauth_refresh_tokens WHERE token = ? AND expires_at > datetime('now')",
-    [refreshToken]
+  const row = await db.one<{ user_id: number }>(
+    "SELECT user_id FROM oauth_refresh_tokens WHERE token = ? AND client_id = ? AND expires_at > datetime('now')",
+    [await tokenHash(refreshToken), clientId],
   );
-  return row;
+  return row ?? null;
 }
 
-export async function exchangeAuthCode(env: any, code: string) {
+/** One-shot: exchange + delete, bound to `clientId`. Looks up by sha256(token). */
+export async function exchangeAuthCode(env: any, code: string, clientId: number) {
   const db = new D1Client(env.DB);
-  const row = await db.one(
-    "SELECT user_id, client_id FROM oauth_auth_codes WHERE token = ? AND expires_at > datetime('now')",
-    [code]
+  const row = await db.one<{ user_id: number }>(
+    "SELECT user_id FROM oauth_auth_codes WHERE token = ? AND client_id = ? AND expires_at > datetime('now')",
+    [await tokenHash(code), clientId],
   );
-  await db.run("DELETE FROM oauth_auth_codes WHERE token = ?", [code]);
-  return row;
+  await db.run("DELETE FROM oauth_auth_codes WHERE token = ?", [await tokenHash(code)]);
+  return row ?? null;
 }

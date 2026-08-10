@@ -14,8 +14,13 @@
 // D1Client only — db/types intentionally not re-exported (collides with wire-types).
 export { D1Client } from "./db";
 
-export { toHex, randomHex } from "./crypto";
+export { toHex, randomHex, tokenHash } from "./crypto";
 export { sanitizeEntryHtml, computeReadingTime } from "./sanitize";
+export {
+  securityHeaders,
+  API_CSP,
+  UI_CSP,
+} from "./security-headers";
 
 export { isRegistrationEnabled } from "./config/feature-flags";
 
@@ -40,6 +45,11 @@ export {
 export { findClient, createClient, listClients, deleteClient } from "./auth/clients";
 export { createAccessToken, createRefreshToken } from "./auth/tokens";
 export { passwordGrant, refreshTokenGrant, exchangeAuthCode } from "./auth/grants";
+export {
+  isThrottled,
+  recordLoginFailure,
+  clearLoginFailures,
+} from "./auth/throttle";
 
 export { fetchAndParse, parseHtml, type ParsedContent } from "./parser/fetcher";
 export { generateEpub, type EntryForEpub } from "./parser/epub";

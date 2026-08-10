@@ -16,13 +16,14 @@ import { corsMiddleware } from "./middleware/cors";
 import { loggingMiddleware } from "./middleware/logging";
 import { errorMiddleware } from "./middleware/error-handler";
 import { authMiddleware } from "./middleware/auth";
-import { isRegistrationEnabled, D1Client } from "@openbag/core";
+import { isRegistrationEnabled, D1Client, securityHeaders, API_CSP } from "@openbag/core";
 
 export const app = new Hono<{ Variables: { user: { id: number; username: string } }; Bindings: { DB: D1Database; ALLOWED_REGISTRATION?: string } }>();
 
 app.use("*", corsMiddleware());
 app.use("*", loggingMiddleware());
 app.use("*", errorMiddleware());
+app.use("*", securityHeaders({ csp: API_CSP }));
 
 
 app.get("/api/health", (c) => c.json({ status: "ok" }));

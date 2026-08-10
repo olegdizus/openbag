@@ -17,8 +17,13 @@ export function searchRoutes() {
       return c.json({ _embedded: { items: [] }, _links: { self: { href: "/api/search" } }, total: 0, page, pages: 0 });
     }
 
-    const likeTerm = `%${term}%`;
     const userId = user.id;
+
+    // Escape the FTS5 query term (M6): wrap in double quotes and double any
+    // internal quotes, so user input can't inject FTS5 query syntax (`*`,
+    // column qualifiers, boolean operators) that throws or matches-all. The
+    // trigram tokenizer still does substring matching under a quoted phrase.
+    const ftsTerm = `"${term.replace(/"/g, '""')}"`;
 
     const rows = await db(c.env).all<any[]>(
       `SELECT e.*, snippet(entries_fts_trigram, 0, '<mark>', '</mark>', '...', 20) as snippet
@@ -27,14 +32,14 @@ export function searchRoutes() {
        WHERE e.user_id = ? AND (fts.title MATCH ? OR fts.content MATCH ? OR fts.url MATCH ?)
        ORDER BY bm25(entries_fts_trigram)
        LIMIT ? OFFSET ?`,
-      [userId, term, term, term, perPage, offset]
+      [userId, ftsTerm, ftsTerm, ftsTerm, perPage, offset]
     );
 
     const totalRow = (await db(c.env).one<{ total: number }>(
       `SELECT COUNT(*) as total FROM entries_fts_trigram fts
        JOIN entries e ON e.id = fts.rowid
        WHERE e.user_id = ? AND (fts.title MATCH ? OR fts.content MATCH ? OR fts.url MATCH ?)`,
-      [userId, term, term, term]
+      [userId, ftsTerm, ftsTerm, ftsTerm]
     )) ?? { total: 0 };
 
     return c.json({

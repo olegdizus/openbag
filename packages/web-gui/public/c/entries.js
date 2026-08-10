@@ -150,7 +150,6 @@ var EntriesTable = class extends HTMLElement {
     const link = target?.closest("a[href]");
     if (!link) return;
     const href = link.getAttribute("href") || "";
-    if (!href.startsWith("/entries") && !href.startsWith("/")) return;
     if (!href.startsWith("/entries")) return;
     e.preventDefault();
     const nextUrl = href;

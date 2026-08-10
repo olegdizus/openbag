@@ -64,6 +64,40 @@ describe("sanitizeEntryHtml — event handlers", () => {
   });
 });
 
+describe("sanitizeEntryHtml — separator bypasses (C3)", () => {
+  // `<img/onerror=…>` is a live handler: the HTML tokenizer treats `/` as an
+  // attribute separator. A bare `\s+` anchor let it through.
+  it("strips on* handlers separated by `/`", () => {
+    const out = sanitizeEntryHtml('<img/onerror=alert(1) src=x>');
+    expect(out).not.toContain("onerror");
+    expect(out).not.toContain("alert");
+    // src survives (handler gone, image kept).
+    expect(out).toContain("src=x");
+  });
+
+  it("strips on* handlers separated by `/` with no trailing space", () => {
+    const out = sanitizeEntryHtml("<svg/onload=alert(1)>");
+    expect(out).not.toContain("onload");
+    expect(out).not.toContain("alert");
+  });
+
+  it("strips dangerous attrs separated by `/` (srcset, srcdoc)", () => {
+    const out = sanitizeEntryHtml('<img/src=x/srcset="a 1x"><iframe/srcdoc="<p>x</p>">');
+    expect(out).not.toContain("srcset");
+    expect(out).not.toContain("srcdoc");
+  });
+
+  it("strips style/class/data attrs separated by `/`", () => {
+    // position:fixed is not on the safe-style allowlist → style dropped entirely.
+    const out = sanitizeEntryHtml('<p/style="position:fixed"/class="x"/data-foo="bar">t</p>');
+    expect(out).not.toContain("style=");
+    expect(out).not.toContain("position");
+    expect(out).not.toContain("class=");
+    expect(out).not.toContain("data-foo");
+    expect(out).toContain("<p>t</p>");
+  });
+});
+
 describe("sanitizeEntryHtml — dangerous URLs", () => {
   it("drops href with javascript: scheme", () => {
     const out = sanitizeEntryHtml('<a href="javascript:alert(1)">x</a>');

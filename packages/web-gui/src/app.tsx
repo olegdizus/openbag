@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { browserAuthMiddleware } from "./browser-auth";
+import { securityHeaders, UI_CSP } from "@openbag/core";
 import { LoginPage } from "./pages/login";
 import { EntriesPage } from "./pages/entries";
 import { EntryPage } from "./pages/entry";
@@ -18,6 +19,8 @@ interface AuthVars {
  * directly (no HTTP SSR→/api seam). Auth: cookie session → 302 redirect to /login.
  */
 export const uiApp = new Hono<{ Variables: AuthVars }>();
+
+uiApp.use("*", securityHeaders({ csp: UI_CSP }));
 
 uiApp.get("/", homeRoute);
 

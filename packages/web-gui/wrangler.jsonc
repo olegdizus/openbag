@@ -1,15 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "openbag-web-gui",
+  "name": "openbag",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-10",
-  "vars": {
-    "ALLOWED_REGISTRATION": "true"
-  },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "openbag-db",
+      "database_name": "wallabag-db",
       // Same database_id as packages/api/wrangler.jsonc — ADR-0018.
       "database_id": "REDACTED-D1-ID"
     }

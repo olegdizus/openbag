@@ -27,17 +27,23 @@ const cdataRe = /<!\[CDATA\[[\s\S]*?\]\]>/g;
 // their body (which is script/style source, not article text) is discarded.
 const rawTextBannedRe = /<(script|style)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi;
 
-const eventHandlerRe = /\s+on[a-z][a-z0-9-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+// Attribute separators in the HTML tokenizer are whitespace OR `/` — a bare
+// `\s+` anchor misses `<img/onerror=…>` (verified stored-XSS bypass, C3).
+// `SEP` is the complete set, so `on*`, `srcdoc`, `style`, etc. are stripped
+// regardless of which separator precedes them.
+const SEP = "[\\s/]";
 
-const dangerousAttrRe = /\s+(?:srcdoc|formaction|xlink:href|xml:base|http-equiv|ping|srcset)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+const eventHandlerRe = new RegExp(`${SEP}+on[a-z][a-z0-9-]*\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)`, "gi");
 
-const urlAttrRe = /\s+(?:href|src|poster|background|cite|longdesc|usemap|profile|action|data)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi;
+const dangerousAttrRe = new RegExp(`${SEP}+(?:srcdoc|formaction|xlink:href|xml:base|http-equiv|ping|srcset)\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)`, "gi");
 
-const styleAttrRe = /\s+style\s*=\s*("[^"]*"|'[^']*')/gi;
+const urlAttrRe = new RegExp(`${SEP}+(?:href|src|poster|background|cite|longdesc|usemap|profile|action|data)\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+)`, "gi");
 
-const classIdAttrRe = /\s+(?:class|id)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+const styleAttrRe = new RegExp(`${SEP}+style\\s*=\\s*("[^"]*"|'[^']*')`, "gi");
 
-const dataAttrRe = /\s+data-[a-z0-9-]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+const classIdAttrRe = new RegExp(`${SEP}+(?:class|id)\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)`, "gi");
+
+const dataAttrRe = new RegExp(`${SEP}+data-[a-z0-9-]+\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s>]+)`, "gi");
 
 const SAFE_STYLE_PROPS = new Set([
   "text-align", "font-size", "font-weight", "font-style", "font-family",

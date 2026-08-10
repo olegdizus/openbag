@@ -92,7 +92,7 @@ for both.
 
 ```jsonc
 {
-  "name": "openbag-web-gui",
+  "name": "openbag",
   "main": "dist/worker.js",
   "compatibility_date": "2026-06-10",
   "d1_databases": [
@@ -121,7 +121,7 @@ owns queues, cron, and the `BROWSER` binding (article re-fetch fallback).
 | `example.com/api/*` | `openbag-api` |
 | `example.com/oauth/*` | `openbag-api` |
 | `example.com/share/*` | `openbag-api` |
-| `example.com/*` | `openbag-web-gui` |
+| `example.com/*` | `openbag` |
 
 
 ## 5. Build Pipeline
