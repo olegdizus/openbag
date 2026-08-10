@@ -46,6 +46,7 @@ export const DeveloperPage: FC<DeveloperPageProps> = async ({ user, env }) => {
         </fieldset>
         <button type="submit">Create client</button>
       </form>
+      <p class="text-muted">The client secret is shown <strong>once</strong> when you create a client — copy it immediately.</p>
 
       <div id="clients">
         {clients.length === 0 ? (
@@ -60,10 +61,6 @@ export const DeveloperPage: FC<DeveloperPageProps> = async ({ user, env }) => {
                   <div class="cred-row">
                     <strong>Client ID:</strong>
                     <code>{esc(clientId)}</code>
-                  </div>
-                  <div class="cred-row">
-                    <strong>Secret:</strong>
-                    <code>{esc(c.secret)}</code>
                   </div>
                   <div class="cred-row">
                     <strong>Redirect URIs:</strong>

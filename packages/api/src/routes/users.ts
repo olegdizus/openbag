@@ -18,7 +18,7 @@ export function userRoutes() {
     const sets: string[] = [];
     const params: any[] = [];
     if (body.email) { sets.push("email = ?"); params.push(body.email); }
-    if (body.name) { sets.push("username = ?"); params.push(body.name); }
+    if (body.name) { sets.push("name = ?"); params.push(body.name); }
     if (sets.length === 0) return c.json({ success: true });
     params.push(user.id);
     await db(c.env).run(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`, params);

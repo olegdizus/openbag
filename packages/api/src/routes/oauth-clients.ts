@@ -26,10 +26,14 @@ export function apiOauthRoutes() {
     const body = await c.req.json().catch(() => ({}));
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) return c.json({ error: "Missing 'name'" }, 400);
-    const redirectUris = Array.isArray(body.redirect_uris) ? body.redirect_uris : [];
-    const allowed = Array.isArray(body.allowed_grant_types)
-      ? body.allowed_grant_types
-      : ["password", "refresh_token"];
+    const redirectUris = (Array.isArray(body.redirect_uris) ? body.redirect_uris : [])
+      .filter((u: unknown) => typeof u === "string" && (u as string).length <= 512)
+      .slice(0, 16);
+    // Validate grant types against the allowlist (L3) — stored values are
+    // otherwise unused (auth-code flow is a stub) but unchecked input is a smell.
+    const GRANTS = new Set(["password", "refresh_token", "authorization_code"]);
+    const allowed = (Array.isArray(body.allowed_grant_types) ? body.allowed_grant_types : ["password", "refresh_token"])
+      .filter((g: unknown) => typeof g === "string" && GRANTS.has(g as string));
     const created = await createClient(c.env, user.id, name, redirectUris, allowed);
     return c.json(created, 201);
   });

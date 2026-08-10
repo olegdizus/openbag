@@ -7,6 +7,7 @@
 
 import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
+import { sanitizeEntryHtml } from "../sanitize";
 
 export interface ParsedContent {
   title: string;
@@ -45,7 +46,14 @@ export async function fetchAndParse(url: string): Promise<ParsedContent> {
   const finalUrl = res.url || url;
   const html = await res.text();
 
-  return await parseHtml(html, finalUrl, contentType);
+  const parsed = await parseHtml(html, finalUrl, contentType);
+  // Enforce the same sanitization invariant as the user-content save paths:
+  // fetched HTML is stored raw in entries.content (rendered on /share and the
+  // reading view), so it MUST be sanitized here — the fetcher's internal
+  // cleaners (stripAttributes/cleanHtml) are weaker (double-quote-only on*
+  // stripping, no URL-scheme filter, no banned-tag drop on the Readability path).
+  parsed.content = sanitizeEntryHtml(parsed.content);
+  return parsed;
 }
 
 /**
@@ -53,19 +61,19 @@ export async function fetchAndParse(url: string): Promise<ParsedContent> {
  * Pass 1: HTMLRewriter for metadata (title, og:*, lang, canonical).
  * Pass 2: linkedom + Readability for body content, excerpt, byline.
  */
+// ponytail: hostname-based SSRF guard. Catches private/loopback IP literals
+// in any encoding (decimal/hex/octal/IPv6-mapped) but NOT DNS rebinding (a
+// domain that resolves to a private IP). On Workers that residual is bounded
+// by CF egress having no route to RFC1918 space; if this ever fronts a
+// non-Workers deployment with private-network reach, add a DoH pre-flight.
 function assertSafeFetchUrl(raw: string): { ok: true } | { ok: false; reason: string } {
   let parsed: URL;
   try { parsed = new URL(raw); } catch { return { ok: false, reason: "invalid URL" }; }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return { ok: false, reason: `scheme '${parsed.protocol}' not allowed` };
   }
-  const host = parsed.hostname.toLowerCase().replace(/^\[|]$/g, ""); // strip IPv6 brackets
-  // IP-literal targets in private / loopback / link-local / metadata ranges.
-  if (
-    /^(?:127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(host) ||
-    /^172\.(?:1[6-9]|2\d|3[01])\./.test(host) ||
-    /^::1$|^fe80:|^fd[0-9a-f]{2}:/i.test(host)
-  ) {
+  const host = parsed.hostname.toLowerCase();
+  if (isPrivateTarget(host)) {
     return { ok: false, reason: "private/loopback address refused" };
   }
   // Well-known cloud metadata endpoints (by hostname).
@@ -73,6 +81,60 @@ function assertSafeFetchUrl(raw: string): { ok: true } | { ok: false; reason: st
     return { ok: false, reason: "metadata endpoint refused" };
   }
   return { ok: true };
+}
+
+/** True if `host` is a private/loopback/link-local/CGNAT IP literal in any
+ *  common encoding (dotted decimal, single decimal int, hex, octal, IPv6). */
+export function isPrivateTarget(host: string): boolean {
+  const h = host.replace(/^\[|]$/g, ""); // strip IPv6 brackets
+  if (!h) return false;
+  if (h.includes(":")) {
+    if (h === "::1" || h === "::") return true;
+    if (/^fe[89ab][0-9a-f]:/.test(h)) return true;        // IPv6 link-local fe80::/10
+    if (/^f[cd][0-9a-f]{2}:/.test(h)) return true;    // IPv6 unique-local
+    const mapped = h.match(/ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i); // ::ffff:a.b.c.d
+    if (mapped && privateIPv4(mapped[1])) return true;
+    const compat = h.match(/:(\d{1,3}(?:\.\d{1,3}){3})$/);     // ::a.b.c.d
+    if (compat && privateIPv4(compat[1])) return true;
+    return false;
+  }
+  const octets = parseIPv4(h);
+  return octets ? privateIPv4(octets.join(".")) : false;
+}
+
+/** Parse an IPv4 host in any single encoding to 4 octets, or null. */
+function parseIPv4(host: string): number[] | null {
+  const tok = (t: string): number | null => {
+    if (/^0x[0-9a-f]+$/i.test(t)) return parseInt(t.slice(2), 16);
+    if (/^0[0-7]+$/.test(t)) return parseInt(t.slice(1), 8);
+    if (/^\d+$/.test(t)) return parseInt(t, 10);
+    return null;
+  };
+  if (!host.includes(".")) {
+    const n = tok(host);
+    if (n === null || n < 0 || n > 0xffffffff) return null;
+    return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
+  }
+  const parts = host.split(".");
+  if (parts.length !== 4) return null;
+  const octets = parts.map(tok);
+  if (octets.some((o) => o === null || (o as number) > 255)) return null;
+  return octets as number[];
+}
+
+function privateIPv4(dotted: string): boolean {
+  const o = dotted.split(".").map((n) => parseInt(n, 10));
+  if (o.length !== 4 || o.some((n) => Number.isNaN(n))) return false;
+  const [a, b] = o;
+  return (
+    a === 0 ||                              // 0.0.0.0/8
+    a === 10 ||                             // 10.0.0.0/8
+    a === 127 ||                            // 127.0.0.0/8
+    (a === 100 && b >= 64 && b <= 127) ||   // CGNAT 100.64.0.0/10
+    (a === 169 && b === 254) ||             // link-local / cloud metadata
+    (a === 172 && b >= 16 && b <= 31) ||    // 172.16.0.0/12
+    (a === 192 && b === 168)                // 192.168.0.0/16
+  );
 }
 
 export async function parseHtml(html: string, url: string, contentType: string = "text/html"): Promise<ParsedContent> {

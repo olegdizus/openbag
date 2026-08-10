@@ -46,16 +46,19 @@ export function authRoutes() {
       switch (grantType) {
         case "password":
           if (!username || !password) return c.json({ error: "invalid_grant" }, 400);
-          if (await isThrottled(c.env, username)) {
-            return c.json({ error: "invalid_grant" }, 400);
+          { // M7: per-IP throttle bucket (CF-Connecting-IP)
+            const ip = c.req.header("CF-Connecting-IP") ?? undefined;
+            if (await isThrottled(c.env, username, ip)) {
+              return c.json({ error: "invalid_grant" }, 400);
+            }
+            try {
+              userId = await passwordGrant(c.env, username, password);
+            } catch {
+              await recordLoginFailure(c.env, username, ip);
+              return c.json({ error: "invalid_grant" }, 400);
+            }
+            await clearLoginFailures(c.env, username);
           }
-          try {
-            userId = await passwordGrant(c.env, username, password);
-          } catch {
-            await recordLoginFailure(c.env, username);
-            return c.json({ error: "invalid_grant" }, 400);
-          }
-          await clearLoginFailures(c.env, username);
           break;
         case "refresh_token": {
           if (!refreshToken) return c.json({ error: "invalid_grant" }, 400);

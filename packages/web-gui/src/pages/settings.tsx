@@ -121,6 +121,7 @@ export const SettingsPage: FC<SettingsPageProps> = async ({ user, env, baseUrl, 
           <button type="submit" class="btn-danger">Revoke token</button>
         </form>
         <feed-token-actions
+          data-has-token={token.has_token ? "1" : "0"}
           data-token={token.feed_token ?? ""}
           data-atom-url={token.atom_url ?? ""}
           data-rss-url={token.rss_url ?? ""}

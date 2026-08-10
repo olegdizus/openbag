@@ -219,24 +219,49 @@ describe("DELETE /api/oauth/clients/:id", () => {
 });
 
 describe("GET /api/feed/token (read)", () => {
-  it("returns null fields when no token has been issued", async () => {
+  it("returns has_token=false when no token has been issued", async () => {
     const db = new D1Client(env.DB);
     await db.run("UPDATE users SET feed_token = NULL WHERE id = 1");
     const res = await authed("/api/feed/token");
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { feed_token: string | null };
+    const body = (await res.json()) as { has_token: boolean; feed_token: string | null };
+    expect(body.has_token).toBe(false);
     expect(body.feed_token).toBeNull();
   });
 
-  it("returns the current token without rotating it", async () => {
-    const db = new D1Client(env.DB);
-    await db.run("UPDATE users SET feed_token = 'abc123' WHERE id = 1");
+  it("never reveals the token value once issued (hashed at rest)", async () => {
+    // Issue via the rotate endpoint — stores sha256, returns plaintext once.
+    const rotate = await authed("/api/feed/token", { method: "POST" });
+    expect(rotate.status).toBe(200);
+    const rotated = (await rotate.json()) as { feed_token: string; atom_url: string; rss_url: string };
+    expect(rotated.feed_token.length).toBeGreaterThanOrEqual(32);
+    expect(rotated.atom_url).toContain("alice.atom");
+    // GET must NOT reconstruct the value.
     const res = await authed("/api/feed/token");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { feed_token: string; atom_url: string; rss_url: string };
-    expect(body.feed_token).toBe("abc123"); // not rotated
-    expect(body.atom_url).toContain("abc123");
-    expect(body.atom_url).toContain("alice.atom");
+    const body = (await res.json()) as { has_token: boolean; feed_token: string | null; atom_url: string | null };
+    expect(body.has_token).toBe(true);
+    expect(body.feed_token).toBeNull();
+    expect(body.atom_url).toBeNull();
+    // The stored column is a sha256 hex, not the plaintext.
+    const row = await new D1Client(env.DB).one<{ feed_token: string }>("SELECT feed_token FROM users WHERE id = 1");
+    expect(row!.feed_token).not.toContain(rotated.feed_token);
+    expect(row!.feed_token).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("POST /api/entries/:id/tags (ownership — M1)", () => {
+  it("404s when tagging another user's entry", async () => {
+    const db = new D1Client(env.DB);
+    await db.run("INSERT OR IGNORE INTO users (id, username, password_hash) VALUES (2, 'bob', 'x')", []);
+    const ins = await (env.DB as D1Database).prepare(
+      "INSERT INTO entries (user_id, url, url_hash, title, mimetype) VALUES (2, 'https://b/1', 'bh1', 'Bob', 'text/html') RETURNING id",
+    ).first<{ id: number }>();
+    const res = await authed(`/api/entries/${ins!.id}/tags`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: jsonBody({ tags: "spy" }),
+    });
+    expect(res.status).toBe(404);
   });
 });
 

@@ -140,6 +140,12 @@ async function getEntryTags(dbc: any, entryId: number, userId: number) {
   );
 }
 
+/** Ownership guard for entry-scoped mutations (M1: tag/annotation IDOR). */
+async function entryOwned(dbc: any, entryId: number, userId: number): Promise<boolean> {
+  const row = await dbc.one("SELECT 1 FROM entries WHERE id = ? AND user_id = ?", [entryId, userId]).catch(() => null);
+  return !!row;
+}
+
 async function enrichEntry(dbc: any, entry: any, userId: number) {
   if (!entry) return entry;
   entry.tags = await getEntryTags(dbc, entry.id, userId);
@@ -537,39 +543,57 @@ export function entryRoutes() {
 
   // Append-only — does NOT clear existing entry_tags.
   app.post("/:id/tags", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const entryId = parseInt(c.req.param("id"));
+    if (!(await entryOwned(db(c.env), entryId, user.id))) {
+      return c.json({ error: { code: 404, message: "Entry not found" } }, 404);
+    }
     const body = await c.req.json();
     const addedTags = await attachTags(db(c.env), user.id, entryId, parseTags(body.tags));
     return c.json(addedTags);
   });
 
   app.delete("/:entryId/tags/:tagId", async (c) => {
+    const user = c.get("user") as { id: number; username: string };
     const entryId = parseInt(c.req.param("entryId"));
     const tagId = parseInt(c.req.param("tagId"));
-    await db(c.env).run("DELETE FROM entry_tags WHERE entry_id = ? AND tag_id = ?", [entryId, tagId]);
+    if (!(await entryOwned(db(c.env), entryId, user.id))) {
+      return c.json({ error: { code: 404, message: "Entry not found" } }, 404);
+    }
+    // Scope by the caller's own tag too — entry_tags has no user_id column,
+    // so a foreign tag_id could otherwise be touched on a owned entry.
+    await db(c.env).run(
+      "DELETE FROM entry_tags WHERE entry_id = ? AND tag_id = ? AND tag_id IN (SELECT id FROM tags WHERE user_id = ?)",
+      [entryId, tagId, user.id]
+    );
     return c.json({ success: true });
   });
 
   app.post("/tags/lists", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const body = await c.req.json();
     const entryIds: number[] = body.entries || [];
     const labels = parseTags(body.tags);
     for (const entryId of entryIds) {
+      // Skip entries the caller doesn't own (M1: bulk tag IDOR).
+      if (!(await entryOwned(db(c.env), entryId, user.id))) continue;
       await attachTags(db(c.env), user.id, entryId, labels);
     }
     return c.json({ success: true });
   });
 
   app.delete("/tags/list", async (c) => {
-    const user = c.get("user");
+    const user = c.get("user") as { id: number; username: string };
     const body = await c.req.json();
     const entryIds: number[] = body.entries || [];
     const tagIds: number[] = body.tags || [];
     for (const entryId of entryIds) {
+      if (!(await entryOwned(db(c.env), entryId, user.id))) continue;
       for (const tagId of tagIds) {
-        await db(c.env).run("DELETE FROM entry_tags WHERE entry_id = ? AND tag_id = ?", [entryId, tagId]);
+        await db(c.env).run(
+          "DELETE FROM entry_tags WHERE entry_id = ? AND tag_id = ? AND tag_id IN (SELECT id FROM tags WHERE user_id = ?)",
+          [entryId, tagId, user.id]
+        );
       }
     }
     return c.json({ success: true });

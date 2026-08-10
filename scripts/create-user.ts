@@ -13,6 +13,9 @@
 //   --local    target the local miniflare D1 (wrangler dev). Default: --remote.
 
 import { spawnSync } from "node:child_process";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { hashPassword } from "@openbag/core";
 
 interface Args {
@@ -61,22 +64,30 @@ async function main() {
 
   const hash = await hashPassword(args.password);
 
-  // Two statements in one execute call: insert the user, then seed their config.
+  // SQL goes through a temp file (L4) rather than `--command`, so the password
+  // hash / email aren't re-parsed by the shell on Windows (`spawnSync` shell:true).
   const emailSql = args.email ? `'${args.email.replace(/'/g, "''")}'` : "NULL";
   const usernameEsc = args.username.replace(/'/g, "''");
   const sql = [
     `INSERT INTO users (username, email, password_hash) VALUES ('${usernameEsc}', ${emailSql}, '${hash}');`,
     `INSERT INTO user_config (user_id) SELECT id FROM users WHERE username = '${usernameEsc}';`,
-  ].join(" ");
+  ].join("\n");
 
   const target = args.local ? "--local" : "--remote";
   console.log(`Provisioning user "${args.username}" (${target})…`);
 
-  const result = spawnSync(
-    "wrangler",
-    ["d1", "execute", "openbag-db", target, "--command", sql, "--config", "packages/api/wrangler.jsonc"],
-    { stdio: "inherit", shell: process.platform === "win32" }
-  );
+  const sqlFile = join(tmpdir(), `openbag-create-user-${process.pid}-${Date.now()}.sql`);
+  writeFileSync(sqlFile, sql);
+  let result: { status: number | null };
+  try {
+    result = spawnSync(
+      "wrangler",
+      ["d1", "execute", "openbag-db", target, "--file", sqlFile, "--config", "packages/api/wrangler.jsonc"],
+      { stdio: "inherit", shell: process.platform === "win32" },
+    );
+  } finally {
+    try { unlinkSync(sqlFile); } catch { /* temp already gone */ }
+  }
 
   if (result.status !== 0) {
     console.error("Failed: wrangler d1 execute exited non-zero.");

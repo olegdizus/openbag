@@ -9,6 +9,13 @@ const LEGACY_ITERATIONS = 100_000;
 const KEY_BITS = 256;
 const SALT_BYTES = 16;
 
+/**
+ * Valid-format throwaway hash (all-zero salt + bits). Used to keep `verify`
+ * timing constant on a username miss — runs the full PBKDF2 so a nonexistent
+ * user responds just as slowly as a real one (defeats username enumeration).
+ */
+export const DUMMY_HASH = `${ITERATIONS}$${"00".repeat(SALT_BYTES + KEY_BITS / 8)}`;
+
 function toHex(bytes: Uint8Array): string {
   let out = "";
   for (let i = 0; i < bytes.length; i++) out += bytes[i].toString(16).padStart(2, "0");

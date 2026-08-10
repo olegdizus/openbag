@@ -5,6 +5,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { browserAuthMiddleware } from "./browser-auth";
+import { esc } from "./render";
 import {
   updateConfig,
   rotateFeedToken,
@@ -53,6 +54,14 @@ async function parseForm<T = Record<string, any>>(c: Context): Promise<T> {
   return {} as T;
 }
 
+/** Minimal same-origin page that surfaces a secret exactly once (M2/M3):
+ *  client secrets and feed tokens are hashed at rest, so the only chance to
+ *  show the plaintext is immediately after creation/rotation. */
+function secretPage(title: string, intro: string, rows: [string, string][], back: string): string {
+  const rowHtml = rows.map(([k, v]) => `<p><strong>${esc(k)}:</strong><br><code>${esc(v)}</code></p>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title></head><body style="font-family:system-ui,sans-serif;max-width:42rem;margin:2rem auto;padding:0 1rem;line-height:1.5"><h1>${esc(title)}</h1><p>${esc(intro)}</p>${rowHtml}<p><a href="${esc(back)}">Back</a></p></body></html>`;
+}
+
 /**
  * Returns the /ui/* sub-app. Pipeline: cookie session → Origin check (CSRF
  * defense on top of SameSite=Strict) → form parse → mutate via @openbag/core
@@ -91,8 +100,19 @@ export function uiActionRoutes() {
     const forbidden = requireSameOrigin(c);
     if (forbidden) return forbidden;
     const user = c.get("user") as { id: number; username: string };
-    await rotateFeedToken(c.env, user.id);
-    return c.redirect("/settings", 303);
+    const token = await rotateFeedToken(c.env, user.id); // raw once — hashed at rest (M3)
+    const base = new URL(c.req.url).origin;
+    const u = encodeURIComponent(user.username);
+    return c.html(secretPage(
+      "Feed token rotated",
+      "Copy this now — the token is shown only once.",
+      [
+        ["token", token],
+        ["Atom", `${base}/api/feeds/${u}.atom?token=${token}`],
+        ["RSS", `${base}/api/feeds/${u}.xml?token=${token}`],
+      ],
+      "/settings",
+    ));
   });
 
   app.post("/feed/token/revoke", async (c) => {
@@ -160,9 +180,17 @@ export function uiActionRoutes() {
     const body = await parseForm<{ name?: string }>(c);
     const name = (body.name || "").trim();
     if (!name) return c.redirect("/developer", 303);
-    // Mirrors the API's defaults.
-    await createClient(c.env, user.id, name, [], ["password", "refresh_token"]);
-    return c.redirect("/developer", 303);
+    // Mirrors the API's defaults. Secret is shown once below (hashed at rest, M2).
+    const created = await createClient(c.env, user.id, name, [], ["password", "refresh_token"]);
+    return c.html(secretPage(
+      `Client created: ${name}`,
+      "Copy these now — the secret is shown only once.",
+      [
+        ["Client ID", `${created.id}_${created.random_id}`],
+        ["Secret", created.secret],
+      ],
+      "/developer",
+    ));
   });
 
   app.post("/oauth/clients/:id/delete", async (c) => {

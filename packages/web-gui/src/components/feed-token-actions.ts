@@ -11,6 +11,7 @@ class FeedTokenActions extends HTMLElement {
 
   private get attrs() {
     return {
+      hasToken: this.dataset.hasToken === "1",
       token: this.dataset.token || "",
       atomUrl: this.dataset.atomUrl || "",
       rssUrl: this.dataset.rssUrl || "",
@@ -18,7 +19,7 @@ class FeedTokenActions extends HTMLElement {
   }
 
   private render(): void {
-    const { token, atomUrl, rssUrl } = this.attrs;
+    const { hasToken, token, atomUrl, rssUrl } = this.attrs;
     const out = document.createElement("pre");
     out.className = "card";
     if (token) {
@@ -26,6 +27,9 @@ class FeedTokenActions extends HTMLElement {
         `<div class="cred-row"><strong>token:</strong> <code>${escapeHtml(token)}</code></div>` +
         (atomUrl ? `<div class="cred-row"><strong>Atom:</strong> <code>${escapeHtml(atomUrl)}</code></div>` : "") +
         (rssUrl ? `<div class="cred-row"><strong>RSS:</strong> <code>${escapeHtml(rssUrl)}</code></div>` : "");
+    } else if (hasToken) {
+      // Token is hashed at rest (M3) — we can confirm it exists but not show it.
+      out.textContent = "A feed token is active (hidden). Rotate to generate a new one.";
     } else {
       out.textContent = "No feed token issued.";
     }

@@ -1,6 +1,6 @@
 import { D1Client } from "../db";
 import { isRegistrationEnabled } from "../config/feature-flags";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, verifyPassword, DUMMY_HASH } from "./password";
 
 export { hashPassword, verifyPassword };
 
@@ -32,6 +32,10 @@ export async function getUserInfo(env: any, userId: number) {
 
 export async function verifyPasswordAgainst(env: any, username: string, password: string): Promise<boolean> {
   const user = await findUserByUsername(env, username);
-  if (!user) return false;
+  if (!user) {
+    // Equalize timing so a miss is as slow as a hit (username-enumeration defense).
+    await verifyPassword(password, DUMMY_HASH);
+    return false;
+  }
   return verifyPassword(password, user.password_hash);
 }

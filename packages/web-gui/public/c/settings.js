@@ -127,17 +127,20 @@ var FeedTokenActions = class extends HTMLElement {
   }
   get attrs() {
     return {
+      hasToken: this.dataset.hasToken === "1",
       token: this.dataset.token || "",
       atomUrl: this.dataset.atomUrl || "",
       rssUrl: this.dataset.rssUrl || ""
     };
   }
   render() {
-    const { token, atomUrl, rssUrl } = this.attrs;
+    const { hasToken, token, atomUrl, rssUrl } = this.attrs;
     const out = document.createElement("pre");
     out.className = "card";
     if (token) {
       out.innerHTML = `<div class="cred-row"><strong>token:</strong> <code>${escapeHtml(token)}</code></div>` + (atomUrl ? `<div class="cred-row"><strong>Atom:</strong> <code>${escapeHtml(atomUrl)}</code></div>` : "") + (rssUrl ? `<div class="cred-row"><strong>RSS:</strong> <code>${escapeHtml(rssUrl)}</code></div>` : "");
+    } else if (hasToken) {
+      out.textContent = "A feed token is active (hidden). Rotate to generate a new one.";
     } else {
       out.textContent = "No feed token issued.";
     }

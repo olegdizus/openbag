@@ -12,7 +12,8 @@ export function readSessionCookie(cookieHeader: string | undefined): string | un
   if (!cookieHeader) return undefined;
   const re = new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`);
   const match = cookieHeader.match(re);
-  return match ? decodeURIComponent(match[1]) : undefined;
+  if (!match) return undefined;
+  try { return decodeURIComponent(match[1]); } catch { return undefined; } // L1: bad % → redirect, not 500
 }
 
 export interface BrowserAuthOptions {

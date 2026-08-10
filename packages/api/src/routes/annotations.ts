@@ -19,6 +19,9 @@ export function annotationRoutes() {
   app.post("/:entryId", async (c) => {
     const user = c.get("user");
     const entryId = parseInt(c.req.param("entryId"));
+    // M1: only annotate entries the caller owns.
+    const owned = await db(c.env).one("SELECT 1 FROM entries WHERE id = ? AND user_id = ?", [entryId, user.id]).catch(() => null);
+    if (!owned) return c.json({ error: { code: 404, message: "Entry not found" } }, 404);
     const body = await c.req.json();
     const id = crypto.randomUUID();
     await db(c.env).run(

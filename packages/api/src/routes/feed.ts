@@ -1,19 +1,16 @@
 import { Hono } from "hono";
-import { D1Client, randomHex } from "@openbag/core";
+import { D1Client, getFeedToken, rotateFeedToken, resolveFeedTokenUserId } from "@openbag/core";
 
 const db = (env: any) => new D1Client(env.DB);
 
 /** Cap results to keep feed responses cheap on Workers. */
 const FEED_LIMIT = 50;
 
-/** Authenticate via the `?token=<feed_token>` query param (not Bearer). */
+/** Authenticate via the `?token=<feed_token>` query param (not Bearer).
+ *  Hashes the token before lookup — the stored value is sha256, never plaintext (M3). */
 async function authenticateByToken(env: any, token: string | undefined): Promise<number | null> {
   if (!token) return null;
-  const row = await db(env).one<{ id: number }>(
-    "SELECT id FROM users WHERE feed_token = ?",
-    [token],
-  ).catch(() => null);
-  return row?.id ?? null;
+  return resolveFeedTokenUserId(env, token);
 }
 
 /**
@@ -170,41 +167,25 @@ export function feedRoutes() {
   // URLs are `null` when no feed token has been issued yet.
   app.get("/token", async (c) => {
     const user: any = c.get("user");
-    const row = await db(c.env).one<{ feed_token: string | null; username: string }>(
-      "SELECT u.feed_token, u.username FROM users u WHERE u.id = ?",
-      [user.id],
-    );
-    const token = row?.feed_token ?? null;
     const base = new URL(c.req.url).origin;
-    const username = row?.username ?? "";
-    const suffix = token ? `?token=${token}` : "";
-    return c.json({
-      feed_token: token,
-      atom_url: token
-        ? `${base}/api/feeds/${encodeURIComponent(username)}.atom${suffix}`
-        : null,
-      rss_url: token
-        ? `${base}/api/feeds/${encodeURIComponent(username)}.xml${suffix}`
-        : null,
-    });
+    // Token is hashed at rest (M3): returns has_token only, never the value.
+    return c.json(await getFeedToken(c.env, user.id, base));
   });
 
   app.post("/token", async (c) => {
     const user: any = c.get("user");
-    const token = randomHex(32); // 256-bit opaque secret
-    await db(c.env).run(
-      "UPDATE users SET feed_token = ?, updated_at = datetime('now') WHERE id = ?",
-      [token, user.id],
-    );
+    // rotateFeedToken stores sha256(token) and returns the raw value once (M3).
+    const token = await rotateFeedToken(c.env, user.id);
     const username = await db(c.env).one<{ username: string }>(
       "SELECT username FROM users WHERE id = ?",
       [user.id],
     );
     const base = new URL(c.req.url).origin;
+    const u = encodeURIComponent(username!.username);
     return c.json({
       feed_token: token,
-      atom_url: `${base}/api/feeds/${encodeURIComponent(username!.username)}.atom?token=${token}`,
-      rss_url: `${base}/api/feeds/${encodeURIComponent(username!.username)}.xml?token=${token}`,
+      atom_url: `${base}/api/feeds/${u}.atom?token=${token}`,
+      rss_url: `${base}/api/feeds/${u}.xml?token=${token}`,
     });
   });
 

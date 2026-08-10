@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT,
   password_hash TEXT NOT NULL,
   name TEXT,
-  feed_token TEXT,                      -- 32-byte hex; nullable
+  feed_token TEXT,                      -- sha256(plaintext); nullable; plaintext shown once on rotate
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS oauth_clients (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   random_id TEXT NOT NULL,
-  secret TEXT NOT NULL,
+  secret TEXT NOT NULL,                 -- sha256(plaintext); plaintext shown once at creation
   name TEXT NOT NULL,
   redirect_uris TEXT DEFAULT '[]',
   allowed_grant_types TEXT DEFAULT '[]',

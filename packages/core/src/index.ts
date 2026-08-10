@@ -51,7 +51,7 @@ export {
   clearLoginFailures,
 } from "./auth/throttle";
 
-export { fetchAndParse, parseHtml, type ParsedContent } from "./parser/fetcher";
+export { fetchAndParse, parseHtml, isPrivateTarget, type ParsedContent } from "./parser/fetcher";
 export { generateEpub, type EntryForEpub } from "./parser/epub";
 
 // Query helpers (single source of truth, ADR-0013 → ADR-0018).
@@ -76,5 +76,5 @@ export {
 } from "./queries/entries";
 export { listTags, deleteTag, deleteTagsByLabels, type TagWithCount } from "./queries/tags";
 export { getConfig, updateConfig, type ConfigPatch } from "./queries/config";
-export { getFeedToken, rotateFeedToken, revokeFeedToken } from "./queries/feed";
+export { getFeedToken, rotateFeedToken, revokeFeedToken, resolveFeedTokenUserId } from "./queries/feed";
 export { createEntriesBulk, type BulkResult } from "./queries/import";

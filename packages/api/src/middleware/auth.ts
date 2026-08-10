@@ -4,7 +4,8 @@ import { D1Client, lookupSession, tokenHash } from "@openbag/core";
 function readSessionCookie(cookieHeader: string | undefined): string | undefined {
   if (!cookieHeader) return undefined;
   const match = cookieHeader.match(/(?:^|;\s*)session=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : undefined;
+  if (!match) return undefined;
+  try { return decodeURIComponent(match[1]); } catch { return undefined; } // L1: bad % → 401, not 500
 }
 
 /** Resolve a Bearer token to a user row, or null. Looks up by sha256(token). */

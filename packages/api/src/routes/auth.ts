@@ -43,7 +43,8 @@ async function parseBody<T = Record<string, any>>(c: any): Promise<T> {
 function readSessionCookie(cookieHeader: string | undefined): string | undefined {
   if (!cookieHeader) return undefined;
   const match = cookieHeader.match(/(?:^|;\s*)session=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : undefined;
+  if (!match) return undefined;
+  try { return decodeURIComponent(match[1]); } catch { return undefined; } // L1: bad % → 401, not 500
 }
 
 /**
@@ -104,18 +105,19 @@ export function apiAuthRoutes() {
     if (!username || !password) {
       return c.json({ error: "Missing username or password" }, 400);
     }
-    if (await isThrottled(c.env, username)) {
+    const ip = c.req.header("CF-Connecting-IP") ?? undefined; // M7: per-IP bucket
+    if (await isThrottled(c.env, username, ip)) {
       return c.json({ error: "Too many attempts, try again later" }, 429);
     }
     const ok = await verifyPasswordAgainst(c.env, username, password);
     if (!ok) {
-      await recordLoginFailure(c.env, username);
+      await recordLoginFailure(c.env, username, ip);
       // Constant-ish body to avoid username enumeration via shape.
       return c.json({ error: "Invalid credentials" }, 401);
     }
     const user = await findUserByUsername(c.env, username);
     if (!user) {
-      await recordLoginFailure(c.env, username);
+      await recordLoginFailure(c.env, username, ip);
       return c.json({ error: "Invalid credentials" }, 401);
     }
     await clearLoginFailures(c.env, username);

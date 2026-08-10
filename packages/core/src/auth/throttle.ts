@@ -7,26 +7,37 @@
 import { D1Client } from "../db";
 
 const MAX_ATTEMPTS = 10;
+const MAX_IP_ATTEMPTS = 50; // looser per-IP bucket — tolerates NAT / shared egress
 const WINDOW_SECONDS = 15 * 60; // 15 min
 
-/** True when the caller has exceeded the failure budget within the window. */
-export async function isThrottled(env: any, username: string): Promise<boolean> {
+/** True when the caller has exceeded the failure budget within the window.
+ *  Checks both the per-username bucket and (when `ip` is given) a per-IP
+ *  bucket so credential-stuffing across many usernames is still throttled. */
+export async function isThrottled(env: any, username: string, ip?: string): Promise<boolean> {
   try {
     const db = new D1Client(env.DB);
     await ensureTable(db);
-    const row = await db.one<{ n: number }>(
-      `SELECT COUNT(*) AS n FROM login_attempts
-       WHERE key = ? AND attempted_at > datetime('now', '-${WINDOW_SECONDS} seconds')`,
-      [username.toLowerCase()],
+    const keys = [username.toLowerCase()];
+    if (ip) keys.push(`ip:${ip}`);
+    const placeholders = keys.map(() => "?").join(",");
+    const rows = await db.all<{ key: string; n: number }>(
+      `SELECT key, COUNT(*) AS n FROM login_attempts
+       WHERE key IN (${placeholders}) AND attempted_at > datetime('now', '-${WINDOW_SECONDS} seconds')
+       GROUP BY key`,
+      keys,
     );
-    return !!row && row.n >= MAX_ATTEMPTS;
+    for (const r of rows) {
+      const limit = r.key.startsWith("ip:") ? MAX_IP_ATTEMPTS : MAX_ATTEMPTS;
+      if (r.n >= limit) return true;
+    }
+    return false;
   } catch {
     return false; // fail-open — never block auth on a DB hiccup
   }
 }
 
-/** Record a failed credential check. */
-export async function recordLoginFailure(env: any, username: string): Promise<void> {
+/** Record a failed credential check (under both the username and IP keys). */
+export async function recordLoginFailure(env: any, username: string, ip?: string): Promise<void> {
   try {
     const db = new D1Client(env.DB);
     await ensureTable(db);
@@ -34,6 +45,12 @@ export async function recordLoginFailure(env: any, username: string): Promise<vo
       "INSERT INTO login_attempts (key, attempted_at) VALUES (?, datetime('now'))",
       [username.toLowerCase()],
     );
+    if (ip) {
+      await db.run(
+        "INSERT INTO login_attempts (key, attempted_at) VALUES (?, datetime('now'))",
+        [`ip:${ip}`],
+      );
+    }
   } catch {
     /* fail-open */
   }

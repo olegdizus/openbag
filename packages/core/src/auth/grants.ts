@@ -1,11 +1,15 @@
 import { D1Client } from "../db";
 import { tokenHash } from "../crypto";
-import { verifyPassword } from "./password";
+import { verifyPassword, DUMMY_HASH } from "./password";
 
 export async function passwordGrant(env: any, username: string, password: string) {
   const db = new D1Client(env.DB);
   const user = await db.one("SELECT id, password_hash FROM users WHERE username = ?", [username]);
-  if (!user) throw new Error("Invalid credentials");
+  if (!user) {
+    // Equalize timing so a miss is as slow as a hit (username-enumeration defense).
+    await verifyPassword(password, DUMMY_HASH);
+    throw new Error("Invalid credentials");
+  }
   const ok = await verifyPassword(password, user.password_hash);
   if (!ok) throw new Error("Invalid credentials");
   return user.id;
