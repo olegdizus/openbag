@@ -6,8 +6,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "wallabag-db",
-      "database_id": "REDACTED-D1-ID"
+      "database_name": "wallabag-db"
+      // database_id omitted: wrangler resolves by name (id is a non-secret identifier).
     }
   ],
   "queues": {

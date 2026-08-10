@@ -6,9 +6,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "wallabag-db",
-      // Same database_id as packages/api/wrangler.jsonc — ADR-0018.
-      "database_id": "REDACTED-D1-ID"
+      "database_name": "wallabag-db"
+      // Same wallabag-db as packages/api/wrangler.jsonc (ADR-0018); database_id omitted, resolved by name.
     }
   ],
   "observability": {
